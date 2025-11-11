@@ -37,9 +37,10 @@ def mock_codebase_loader():
         yield loader
 
 
-def test_analyze_codebase_with_gemini(mock_gemini_client, mock_codebase_loader):
+@pytest.mark.asyncio
+async def test_analyze_codebase_with_gemini(mock_gemini_client, mock_codebase_loader):
     """Test analyze_codebase_with_gemini function."""
-    result = analyze_codebase_with_gemini(
+    result = await analyze_codebase_with_gemini(
         focus_description="test analysis",
         directories=None,
         file_patterns=None,
@@ -53,9 +54,10 @@ def test_analyze_codebase_with_gemini(mock_gemini_client, mock_codebase_loader):
     assert mock_gemini_client.analyze_with_context.called
 
 
-def test_analyze_codebase_with_custom_patterns(mock_gemini_client, mock_codebase_loader):
+@pytest.mark.asyncio
+async def test_analyze_codebase_with_custom_patterns(mock_gemini_client, mock_codebase_loader):
     """Test analyze_codebase_with_gemini with custom patterns."""
-    result = analyze_codebase_with_gemini(
+    result = await analyze_codebase_with_gemini(
         focus_description="test analysis",
         directories=["src"],
         file_patterns=["*.py"],
@@ -68,14 +70,15 @@ def test_analyze_codebase_with_custom_patterns(mock_gemini_client, mock_codebase
     mock_codebase_loader.load_files.assert_called_once()
 
 
-def test_create_specification_with_gemini(mock_gemini_client, mock_codebase_loader, tmp_path):
+@pytest.mark.asyncio
+async def test_create_specification_with_gemini(mock_gemini_client, mock_codebase_loader, tmp_path):
     """Test create_specification_with_gemini function."""
     # Mock the generate_content to return a spec-like response
     mock_gemini_client.generate_content = AsyncMock(return_value="# Test Spec\n\n## Tasks\n- Task 1\n\n## Files to Create\n- file1.py\n\n## Files to Modify\n- file2.py")
 
     output_file = tmp_path / "test-spec.md"
 
-    result = create_specification_with_gemini(
+    result = await create_specification_with_gemini(
         feature_description="test feature",
         context_id=None,
         spec_template="standard",
@@ -90,7 +93,8 @@ def test_create_specification_with_gemini(mock_gemini_client, mock_codebase_load
     assert output_file.exists()
 
 
-def test_create_specification_with_context(mock_gemini_client, mock_codebase_loader, tmp_path):
+@pytest.mark.asyncio
+async def test_create_specification_with_context(mock_gemini_client, mock_codebase_loader, tmp_path):
     """Test create_specification_with_gemini with cached context."""
     # Mock cached context
     mock_gemini_client.get_cached_context = Mock(return_value={
@@ -104,7 +108,7 @@ def test_create_specification_with_context(mock_gemini_client, mock_codebase_loa
 
     output_file = tmp_path / "test-spec.md"
 
-    result = create_specification_with_gemini(
+    result = await create_specification_with_gemini(
         feature_description="test feature",
         context_id="ctx_test123",
         spec_template="minimal",
@@ -117,15 +121,16 @@ def test_create_specification_with_context(mock_gemini_client, mock_codebase_loa
     assert mock_gemini_client.analyze_with_context.called
 
 
+@pytest.mark.asyncio
 @patch('hitoshura25_gemini_workflow_bridge.generator._get_git_diff')
-def test_review_code_with_gemini(mock_git_diff, mock_gemini_client, tmp_path):
+async def test_review_code_with_gemini(mock_git_diff, mock_gemini_client, tmp_path):
     """Test review_code_with_gemini function."""
     mock_git_diff.return_value = "diff --git a/test.py"
     mock_gemini_client.generate_content = AsyncMock(return_value='{"issues_found": [], "summary": "Looks good", "has_blocking_issues": false, "recommendations": []}')
 
     output_file = tmp_path / "review.md"
 
-    result = review_code_with_gemini(
+    result = await review_code_with_gemini(
         files=None,
         review_focus=None,
         spec_path=None,
@@ -141,7 +146,8 @@ def test_review_code_with_gemini(mock_git_diff, mock_gemini_client, tmp_path):
     assert output_file.exists()
 
 
-def test_review_code_with_files(mock_gemini_client, tmp_path):
+@pytest.mark.asyncio
+async def test_review_code_with_files(mock_gemini_client, tmp_path):
     """Test review_code_with_gemini with specific files."""
     # Create a test file
     test_file = tmp_path / "test.py"
@@ -151,7 +157,7 @@ def test_review_code_with_files(mock_gemini_client, tmp_path):
 
     output_file = tmp_path / "review.md"
 
-    result = review_code_with_gemini(
+    result = await review_code_with_gemini(
         files=[str(test_file)],
         review_focus=["security", "performance"],
         spec_path=None,
@@ -162,13 +168,14 @@ def test_review_code_with_files(mock_gemini_client, tmp_path):
     assert "review_path" in result
 
 
-def test_generate_documentation_with_gemini(mock_gemini_client, mock_codebase_loader, tmp_path):
+@pytest.mark.asyncio
+async def test_generate_documentation_with_gemini(mock_gemini_client, mock_codebase_loader, tmp_path):
     """Test generate_documentation_with_gemini function."""
     mock_gemini_client.analyze_with_context = AsyncMock(return_value="# API Documentation\n\nTest documentation content")
 
     output_file = tmp_path / "api-docs.md"
 
-    result = generate_documentation_with_gemini(
+    result = await generate_documentation_with_gemini(
         documentation_type="api",
         scope="test API",
         output_path=str(output_file),
@@ -183,11 +190,12 @@ def test_generate_documentation_with_gemini(mock_gemini_client, mock_codebase_lo
     assert output_file.exists()
 
 
-def test_ask_gemini_simple(mock_gemini_client):
+@pytest.mark.asyncio
+async def test_ask_gemini_simple(mock_gemini_client):
     """Test ask_gemini function without context."""
     mock_gemini_client.generate_content = AsyncMock(return_value="This is the answer")
 
-    result = ask_gemini(
+    result = await ask_gemini(
         prompt="What is 2+2?",
         include_codebase_context=False,
         context_id=None,
@@ -202,11 +210,12 @@ def test_ask_gemini_simple(mock_gemini_client):
     assert mock_gemini_client.generate_content.called
 
 
-def test_ask_gemini_with_context(mock_gemini_client, mock_codebase_loader):
+@pytest.mark.asyncio
+async def test_ask_gemini_with_context(mock_gemini_client, mock_codebase_loader):
     """Test ask_gemini function with codebase context."""
     mock_gemini_client.analyze_with_context = AsyncMock(return_value="This is the answer with context")
 
-    result = ask_gemini(
+    result = await ask_gemini(
         prompt="Explain this codebase",
         include_codebase_context=True,
         context_id=None,
@@ -219,7 +228,8 @@ def test_ask_gemini_with_context(mock_gemini_client, mock_codebase_loader):
     assert mock_gemini_client.analyze_with_context.called
 
 
-def test_ask_gemini_with_cached_context(mock_gemini_client):
+@pytest.mark.asyncio
+async def test_ask_gemini_with_cached_context(mock_gemini_client):
     """Test ask_gemini function with cached context."""
     mock_gemini_client.get_cached_context = Mock(return_value={
         "analysis": {
@@ -230,7 +240,7 @@ def test_ask_gemini_with_cached_context(mock_gemini_client):
     })
     mock_gemini_client.analyze_with_context = AsyncMock(return_value="Answer using cached context")
 
-    result = ask_gemini(
+    result = await ask_gemini(
         prompt="Question about the code",
         include_codebase_context=False,
         context_id="ctx_test123",

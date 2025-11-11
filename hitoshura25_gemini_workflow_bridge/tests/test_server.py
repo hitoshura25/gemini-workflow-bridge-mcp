@@ -30,8 +30,9 @@ async def test_server_initialization():
     assert "ask_gemini" in tool_names
 
 
+@pytest.mark.asyncio
 @patch('hitoshura25_gemini_workflow_bridge.server.generator.analyze_codebase_with_gemini')
-def test_analyze_codebase_with_gemini_function(mock_analyze):
+async def test_analyze_codebase_with_gemini_function(mock_analyze):
     """Test analyze_codebase_with_gemini tool function."""
     # Mock the generator function to return a test result
     mock_analyze.return_value = {
@@ -40,7 +41,7 @@ def test_analyze_codebase_with_gemini_function(mock_analyze):
     }
 
     # Test the function directly
-    result = analyze_codebase_with_gemini(
+    result = await analyze_codebase_with_gemini(
         focus_description="test_value",
         directories="test",
         file_patterns="test",
@@ -54,8 +55,9 @@ def test_analyze_codebase_with_gemini_function(mock_analyze):
     assert "analysis" in result
 
 
+@pytest.mark.asyncio
 @patch('hitoshura25_gemini_workflow_bridge.server.generator.create_specification_with_gemini')
-def test_create_specification_with_gemini_function(mock_create_spec):
+async def test_create_specification_with_gemini_function(mock_create_spec):
     """Test create_specification_with_gemini tool function."""
     # Mock the generator function
     mock_create_spec.return_value = {
@@ -64,7 +66,7 @@ def test_create_specification_with_gemini_function(mock_create_spec):
     }
 
     # Test the function directly
-    result = create_specification_with_gemini(
+    result = await create_specification_with_gemini(
         feature_description="test_value",
         context_id="test_value",
         spec_template="test_value",
@@ -76,8 +78,9 @@ def test_create_specification_with_gemini_function(mock_create_spec):
     assert len(result) > 0
 
 
+@pytest.mark.asyncio
 @patch('hitoshura25_gemini_workflow_bridge.server.generator.review_code_with_gemini')
-def test_review_code_with_gemini_function(mock_review):
+async def test_review_code_with_gemini_function(mock_review):
     """Test review_code_with_gemini tool function."""
     # Mock the generator function
     mock_review.return_value = {
@@ -86,7 +89,7 @@ def test_review_code_with_gemini_function(mock_review):
     }
 
     # Test the function directly
-    result = review_code_with_gemini(
+    result = await review_code_with_gemini(
         files="test",
         review_focus="test",
         spec_path="test_value",
@@ -98,8 +101,9 @@ def test_review_code_with_gemini_function(mock_review):
     assert len(result) > 0
 
 
+@pytest.mark.asyncio
 @patch('hitoshura25_gemini_workflow_bridge.server.generator.generate_documentation_with_gemini')
-def test_generate_documentation_with_gemini_function(mock_gen_doc):
+async def test_generate_documentation_with_gemini_function(mock_gen_doc):
     """Test generate_documentation_with_gemini tool function."""
     # Mock the generator function
     mock_gen_doc.return_value = {
@@ -108,7 +112,7 @@ def test_generate_documentation_with_gemini_function(mock_gen_doc):
     }
 
     # Test the function directly
-    result = generate_documentation_with_gemini(
+    result = await generate_documentation_with_gemini(
         documentation_type="test_value",
         scope="test_value",
         output_path="test_value",
@@ -120,8 +124,9 @@ def test_generate_documentation_with_gemini_function(mock_gen_doc):
     assert len(result) > 0
 
 
+@pytest.mark.asyncio
 @patch('hitoshura25_gemini_workflow_bridge.server.generator.ask_gemini')
-def test_ask_gemini_function(mock_ask):
+async def test_ask_gemini_function(mock_ask):
     """Test ask_gemini tool function."""
     # Mock the generator function
     mock_ask.return_value = {
@@ -130,7 +135,7 @@ def test_ask_gemini_function(mock_ask):
     }
 
     # Test the function directly
-    result = ask_gemini(
+    result = await ask_gemini(
         prompt="test_value",
         include_codebase_context=True,
         context_id="test_value",

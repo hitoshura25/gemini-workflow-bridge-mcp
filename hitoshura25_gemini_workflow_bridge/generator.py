@@ -69,7 +69,7 @@ def _generate_context_id(focus: str, files: Dict[str, str]) -> str:
     return f"ctx_{focus_hash}_{content_hash}"
 
 
-def analyze_codebase_with_gemini(
+async def analyze_codebase_with_gemini(
     focus_description: str,
     directories: Any = None,
     file_patterns: Any = None,
@@ -123,12 +123,10 @@ Please provide:
 Format your response as structured JSON with these sections."""
 
         # Run async function
-        response = asyncio.run(
-            gemini_client.analyze_with_context(
-                prompt=prompt,
-                context=context,
-                temperature=0.7
-            )
+        response = await gemini_client.analyze_with_context(
+            prompt=prompt,
+            context=context,
+            temperature=0.7
         )
 
         # Parse response
@@ -312,7 +310,7 @@ def _format_cached_context(cached: Dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def create_specification_with_gemini(
+async def create_specification_with_gemini(
     feature_description: str,
     context_id: str = None,
     spec_template: str = None,
@@ -363,19 +361,15 @@ Provide the complete specification in markdown format."""
 
         # Generate specification
         if context:
-            spec_content = asyncio.run(
-                gemini_client.analyze_with_context(
-                    prompt=prompt,
-                    context=context,
-                    temperature=0.7
-                )
+            spec_content = await gemini_client.analyze_with_context(
+                prompt=prompt,
+                context=context,
+                temperature=0.7
             )
         else:
-            spec_content = asyncio.run(
-                gemini_client.generate_content(
-                    prompt=prompt,
-                    temperature=0.7
-                )
+            spec_content = await gemini_client.generate_content(
+                prompt=prompt,
+                temperature=0.7
             )
 
         # Determine output path
@@ -491,7 +485,7 @@ def _format_review_markdown(review_data: Dict[str, Any], code: str) -> str:
     return "\n".join(lines)
 
 
-def review_code_with_gemini(
+async def review_code_with_gemini(
     files: Any = None,
     review_focus: Any = None,
     spec_path: str = None,
@@ -563,11 +557,9 @@ Format your response as JSON with this structure:
 """
 
         # Generate review
-        response = asyncio.run(
-            gemini_client.generate_content(
-                prompt=prompt,
-                temperature=0.3
-            )
+        response = await gemini_client.generate_content(
+            prompt=prompt,
+            temperature=0.3
         )
 
         # Parse response
@@ -611,7 +603,7 @@ Format your response as JSON with this structure:
         }
 
 
-def generate_documentation_with_gemini(
+async def generate_documentation_with_gemini(
     documentation_type: str,
     scope: str,
     output_path: str = None,
@@ -651,12 +643,10 @@ Ensure the documentation:
 Provide the complete documentation in markdown format."""
 
         # Generate documentation
-        doc_content = asyncio.run(
-            gemini_client.analyze_with_context(
-                prompt=prompt,
-                context=context,
-                temperature=0.7
-            )
+        doc_content = await gemini_client.analyze_with_context(
+            prompt=prompt,
+            context=context,
+            temperature=0.7
         )
 
         # Determine output path
@@ -685,7 +675,7 @@ Provide the complete documentation in markdown format."""
         }
 
 
-def ask_gemini(
+async def ask_gemini(
     prompt: str,
     include_codebase_context: bool = None,
     context_id: str = None,
@@ -725,19 +715,15 @@ def ask_gemini(
         temp = float(temperature) if temperature is not None else 0.7
 
         if context_used:
-            response = asyncio.run(
-                gemini_client.analyze_with_context(
-                    prompt=prompt,
-                    context=context,
-                    temperature=temp
-                )
+            response = await gemini_client.analyze_with_context(
+                prompt=prompt,
+                context=context,
+                temperature=temp
             )
         else:
-            response = asyncio.run(
-                gemini_client.generate_content(
-                    prompt=prompt,
-                    temperature=temp
-                )
+            response = await gemini_client.generate_content(
+                prompt=prompt,
+                temperature=temp
             )
 
         return {
