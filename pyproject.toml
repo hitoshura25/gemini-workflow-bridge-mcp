@@ -5,6 +5,11 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 version_scheme = "post-release"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hitoshura25_gemini_workflow_bridge*"]
+exclude = ["specs", "scripts", "venv", "*.egg-info"]
+
 [project]
 name = "hitoshura25-gemini-workflow-bridge"
 description = "MCP server that bridges Claude Code to Gemini CLI for workflow tasks like codebase analysis, specification creation, and code review"
