@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hitoshura25_gemini_workflow_bridge*"]
+exclude = ["specs", "scripts", "venv", "*.egg-info"]
+
+[project]
+name = "hitoshura25-gemini-workflow-bridge"
+description = "MCP server that bridges Claude Code to Gemini CLI for workflow tasks like codebase analysis, specification creation, and code review"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Vinayak Menon", email = "hitoshura.25@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "mcp>=1.0.0,<2.0.0",
+    # No google-genai needed - uses Gemini CLI instead
+    "python-dotenv>=1.0.0",
+    "gitpython>=3.1.0",
+    "pathspec>=0.12.0",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+hitoshura25-gemini-workflow-bridge = "hitoshura25_gemini_workflow_bridge.server:main"
+hitoshura25-gemini-workflow-bridge-cli = "hitoshura25_gemini_workflow_bridge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/hitoshura25/gemini-workflow-bridge-mcp"
+Repository = "https://github.com/hitoshura25/gemini-workflow-bridge-mcp"
+Issues = "https://github.com/hitoshura25/gemini-workflow-bridge-mcp/issues"
