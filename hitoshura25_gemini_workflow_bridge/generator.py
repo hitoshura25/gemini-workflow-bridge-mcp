@@ -689,7 +689,7 @@ def ask_gemini(
     prompt: str,
     include_codebase_context: bool = None,
     context_id: str = None,
-    temperature: int = None
+    temperature: float = None
 ) -> Dict[str, Any]:
     """
     General-purpose Gemini query with optional codebase context

@@ -187,7 +187,7 @@ def main():
     
     ask_gemini_parser.add_argument(
         '--temperature',
-        type=int,
+        type=float,
         help='Temperature for generation'
     )
     
@@ -217,8 +217,8 @@ def main():
             )
             
             print(result)
-        
-        if args.command == 'create_specification_with_gemini':
+
+        elif args.command == 'create_specification_with_gemini':
             
             result = create_specification_with_gemini(
                 
@@ -233,8 +233,8 @@ def main():
             )
             
             print(result)
-        
-        if args.command == 'review_code_with_gemini':
+
+        elif args.command == 'review_code_with_gemini':
             
             result = review_code_with_gemini(
                 
@@ -249,8 +249,8 @@ def main():
             )
             
             print(result)
-        
-        if args.command == 'generate_documentation_with_gemini':
+
+        elif args.command == 'generate_documentation_with_gemini':
             
             result = generate_documentation_with_gemini(
                 
@@ -265,8 +265,8 @@ def main():
             )
             
             print(result)
-        
-        if args.command == 'ask_gemini':
+
+        elif args.command == 'ask_gemini':
             
             result = ask_gemini(
                 

@@ -394,7 +394,7 @@ General-purpose Gemini query.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/gemini-workflow-bridge-mcp
+git clone https://github.com/hitoshura25/gemini-workflow-bridge-mcp
 cd gemini-workflow-bridge-mcp
 
 # Create virtual environment
@@ -404,9 +404,9 @@ source venv/bin/activate  # or venv\Scripts\activate on Windows
 # Install in development mode
 pip install -e ".[dev]"
 
-# Copy environment template
+# Copy environment template (optional)
 cp .env.example .env
-# Edit .env with your GEMINI_API_KEY
+# Edit .env to customize model or directories if needed
 ```
 
 ### Run Tests
@@ -422,25 +422,15 @@ ruff check .
 mypy .
 ```
 
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## License
 
-Apache-2.0 License - see [LICENSE](LICENSE) for details.
+Apache-2.0 License - see [LICENSE](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/LICENSE) for details.
 
 ## Credits
 
 - Built with [MCP](https://modelcontextprotocol.io/)
 - Powered by [Google Gemini 2.0 Flash](https://deepmind.google/technologies/gemini/)
-- Generated with [mcp-server-generator](https://github.com/anthropics/mcp-server-generator)
+- Generated with [mcp-server-generator](https://github.com/hitoshura25/mcp-server-generator)
 
 ## Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/gemini-workflow-bridge-mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/gemini-workflow-bridge-mcp/discussions)
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+- **Issues**: [GitHub Issues](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/issues)

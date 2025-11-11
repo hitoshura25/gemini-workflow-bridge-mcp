@@ -202,9 +202,9 @@ def ask_gemini(
     include_codebase_context: bool = None,
     
     context_id: str = None,
-    
-    temperature: int = None
-    
+
+    temperature: float = None
+
 ) -> str:
     """General-purpose Gemini query with optional codebase context
 
