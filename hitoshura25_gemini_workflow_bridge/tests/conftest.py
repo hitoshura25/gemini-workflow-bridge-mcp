@@ -9,8 +9,9 @@ import os
 @pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch):
     """Mock environment variables for all tests."""
-    monkeypatch.setenv("GEMINI_API_KEY", "test_api_key")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.0-flash")
+    # No API key needed - uses Gemini CLI
+    # "auto" lets CLI choose best model automatically
+    monkeypatch.setenv("GEMINI_MODEL", "auto")
     monkeypatch.setenv("DEFAULT_SPEC_DIR", "./specs")
     monkeypatch.setenv("DEFAULT_REVIEW_DIR", "./reviews")
     monkeypatch.setenv("DEFAULT_CONTEXT_DIR", "./.workflow-context")

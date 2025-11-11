@@ -3,6 +3,7 @@ Tests for core business logic.
 """
 
 import pytest
+import shutil
 from unittest.mock import Mock, patch, AsyncMock
 from hitoshura25_gemini_workflow_bridge.generator import (
     analyze_codebase_with_gemini,
@@ -242,9 +243,73 @@ def test_ask_gemini_with_cached_context(mock_gemini_client):
     assert mock_gemini_client.get_cached_context.called
 
 
-def test_error_handling_no_api_key():
-    """Test that missing API key is handled gracefully."""
-    with patch('os.getenv', return_value=None):
+def test_cli_not_found():
+    """Test error when Gemini CLI is not installed."""
+    with patch('shutil.which', return_value=None):
         from hitoshura25_gemini_workflow_bridge.gemini_client import GeminiClient
-        with pytest.raises(ValueError, match="GEMINI_API_KEY not set"):
+        with pytest.raises(RuntimeError, match="Gemini CLI not found"):
             GeminiClient()
+
+
+def test_cli_not_working():
+    """Test error when Gemini CLI is found but not working."""
+    with patch('shutil.which', return_value='/usr/local/bin/gemini'):
+        with patch('subprocess.run') as mock_run:
+            # Simulate CLI returning error
+            mock_run.return_value = Mock(returncode=1, stderr="Authentication error")
+
+            from hitoshura25_gemini_workflow_bridge.gemini_client import GeminiClient
+            with pytest.raises(RuntimeError, match="Gemini CLI found but not working"):
+                GeminiClient()
+
+
+@pytest.mark.asyncio
+async def test_cli_timeout():
+    """Test timeout handling for long-running CLI calls."""
+    with patch('shutil.which', return_value='/usr/local/bin/gemini'):
+        with patch('subprocess.run', return_value=Mock(returncode=0, stderr="")):
+            from hitoshura25_gemini_workflow_bridge.gemini_client import GeminiClient
+            client = GeminiClient()
+
+            # Mock asyncio.wait_for to raise TimeoutError
+            import asyncio
+            original_wait_for = asyncio.wait_for
+
+            async def mock_wait_for(coro, timeout):
+                # Close the coroutine to avoid unawaited coroutine warning
+                coro.close()
+                raise asyncio.TimeoutError()
+
+            with patch('asyncio.wait_for', side_effect=mock_wait_for):
+                with patch('asyncio.create_subprocess_exec') as mock_exec:
+                    mock_process = AsyncMock()
+                    mock_process.communicate = AsyncMock()
+                    mock_process.kill = AsyncMock()
+                    mock_process.wait = AsyncMock()
+                    mock_exec.return_value = mock_process
+
+                    with pytest.raises(RuntimeError, match="timed out"):
+                        await client.generate_content("test prompt")
+
+
+@pytest.mark.asyncio
+async def test_cli_json_parsing():
+    """Test handling of malformed JSON from CLI."""
+    with patch('shutil.which', return_value='/usr/local/bin/gemini'):
+        with patch('subprocess.run', return_value=Mock(returncode=0, stderr="")):
+            from hitoshura25_gemini_workflow_bridge.gemini_client import GeminiClient
+            client = GeminiClient()
+
+            # Mock subprocess returning invalid JSON
+            async def mock_communicate():
+                return (b"This is not JSON", b"")
+
+            with patch('asyncio.create_subprocess_exec') as mock_exec:
+                mock_process = AsyncMock()
+                mock_process.communicate = mock_communicate
+                mock_process.returncode = 0
+                mock_exec.return_value = mock_process
+
+                # Should fallback to returning raw output
+                result = await client.generate_content("test prompt")
+                assert result == "This is not JSON"

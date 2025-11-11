@@ -9,6 +9,17 @@ This MCP server extends Claude Code's capabilities by providing tools that deleg
 - **Gemini**: Heavy context loading, codebase analysis, spec generation (2M token window)
 - **Claude Code**: Precise code editing, implementation, and orchestration
 
+## Why CLI-Based?
+
+**CLI-Only Design (v1.0.0+):** This server uses the Gemini CLI instead of API calls. Key benefits:
+
+- **Zero API Costs:** Uses your existing Gemini Code Assist subscription
+- **Simple Auth:** Reuses your CLI credentials, no API key management
+- **No Extra Setup:** If you have Gemini CLI installed, you're ready to go
+- **Same Power:** Access to all Gemini models including 2.0 Flash
+
+Perfect for developers who already have Gemini Code Assist!
+
 ## Features
 
 ### Tools
@@ -30,9 +41,23 @@ This MCP server extends Claude Code's capabilities by providing tools that deleg
 ### Prerequisites
 
 - Python 3.11+
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- Gemini CLI installed and authenticated
 
-### Install via pip
+### Step 1: Install Gemini CLI
+
+```bash
+npm install -g @google/gemini-cli
+```
+
+### Step 2: Authenticate Gemini CLI
+
+```bash
+gemini
+# Follow the authentication prompts
+# Your credentials will be cached automatically
+```
+
+### Step 3: Install MCP Server via pip
 
 ```bash
 pip install hitoshura25-gemini-workflow-bridge
@@ -46,55 +71,68 @@ uvx hitoshura25-gemini-workflow-bridge
 
 ## Configuration
 
-### 1. Get a Gemini API Key
+### Verify Gemini CLI is Ready
 
-Visit [Google AI Studio](https://makersuite.google.com/app/apikey) to create an API key.
+```bash
+# Check CLI is installed
+gemini --version
+# Should show: 0.13.0 or higher
 
-### 2. Set up environment variables
+# Test CLI works
+echo "What is 2+2?" | gemini
+# Should return a response from Gemini
+```
 
-Create a `.env` file in your project root:
+### Optional: Configure Model
+
+Create a `.env` file (optional):
 
 ```env
-GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-2.0-flash
+# NO API KEY NEEDED!
+# Use "auto" to let the CLI choose the best model automatically
+# Pro models for complex tasks, Flash for simple/fast tasks
+GEMINI_MODEL=auto
+
+# Or specify a specific model:
+# GEMINI_MODEL=gemini-2.0-flash
+# GEMINI_MODEL=gemini-1.5-pro
+
 DEFAULT_SPEC_DIR=./specs
 DEFAULT_REVIEW_DIR=./reviews
 DEFAULT_CONTEXT_DIR=./.workflow-context
 ```
 
-### 3. Configure Claude Code
+See `.env.example` for all available options.
+
+### Configure Claude Code
 
 Add the server to your Claude Code MCP configuration (`~/.claude/config.json` or workspace `.claude/config.json`):
 
+**Using uvx (recommended):**
 ```json
 {
   "mcpServers": {
     "gemini-workflow": {
       "command": "uvx",
-      "args": ["hitoshura25-gemini-workflow-bridge"],
-      "env": {
-        "GEMINI_API_KEY": "your_api_key_here"
-      }
+      "args": ["hitoshura25-gemini-workflow-bridge"]
     }
   }
 }
 ```
 
-Or if installed via pip:
-
+**Or using pip:**
 ```json
 {
   "mcpServers": {
     "gemini-workflow": {
       "command": "python",
-      "args": ["-m", "hitoshura25_gemini_workflow_bridge.server"],
-      "env": {
-        "GEMINI_API_KEY": "your_api_key_here"
-      }
+      "args": ["-m", "hitoshura25_gemini_workflow_bridge.server"]
     }
   }
 }
 ```
+
+**Note:** No API key needed in config! The MCP server uses your Gemini CLI credentials automatically.
 
 ## Usage Examples
 

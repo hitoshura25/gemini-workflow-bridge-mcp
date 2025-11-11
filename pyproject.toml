@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=1.0.0,<2.0.0",
-    "google-generativeai>=0.8.0",
+    # No google-genai needed - uses Gemini CLI instead
     "python-dotenv>=1.0.0",
     "gitpython>=3.1.0",
     "pathspec>=0.12.0",
