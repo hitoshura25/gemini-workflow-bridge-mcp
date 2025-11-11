@@ -19,7 +19,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -46,6 +45,6 @@ hitoshura25-gemini-workflow-bridge = "hitoshura25_gemini_workflow_bridge.server:
 hitoshura25-gemini-workflow-bridge-cli = "hitoshura25_gemini_workflow_bridge.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Vinayak Menon/hitoshura25-gemini-workflow-bridge"
-Repository = "https://github.com/Vinayak Menon/hitoshura25-gemini-workflow-bridge"
-Issues = "https://github.com/Vinayak Menon/hitoshura25-gemini-workflow-bridge/issues"
+Homepage = "https://github.com/hitoshura25/gemini-workflow-bridge-mcp"
+Repository = "https://github.com/hitoshura25/gemini-workflow-bridge-mcp"
+Issues = "https://github.com/hitoshura25/gemini-workflow-bridge-mcp/issues"

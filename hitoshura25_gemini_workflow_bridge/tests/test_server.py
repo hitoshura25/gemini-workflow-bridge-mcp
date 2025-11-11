@@ -3,7 +3,7 @@ Tests for MCP server implementation.
 """
 
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from hitoshura25_gemini_workflow_bridge.server import mcp
 from hitoshura25_gemini_workflow_bridge.server import analyze_codebase_with_gemini
 from hitoshura25_gemini_workflow_bridge.server import create_specification_with_gemini

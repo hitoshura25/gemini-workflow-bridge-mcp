@@ -1,5 +1,4 @@
 """Gemini CLI client wrapper using subprocess"""
-import os
 import json
 import shutil
 import asyncio

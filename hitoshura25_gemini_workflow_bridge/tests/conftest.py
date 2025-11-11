@@ -3,7 +3,6 @@ Shared pytest configuration and fixtures for tests.
 """
 
 import pytest
-import os
 
 
 @pytest.fixture(autouse=True)

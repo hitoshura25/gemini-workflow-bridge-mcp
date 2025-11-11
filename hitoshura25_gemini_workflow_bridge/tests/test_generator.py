@@ -3,7 +3,6 @@ Tests for core business logic.
 """
 
 import pytest
-import shutil
 from unittest.mock import Mock, patch, AsyncMock
 from hitoshura25_gemini_workflow_bridge.generator import (
     analyze_codebase_with_gemini,

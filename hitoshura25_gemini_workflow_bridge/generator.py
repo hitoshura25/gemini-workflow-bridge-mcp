@@ -4,7 +4,7 @@ Core business logic for hitoshura25-gemini-workflow-bridge.
 MCP server that bridges Claude Code to Gemini CLI for workflow tasks like codebase analysis, specification creation, and code review
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import asyncio
 import hashlib
 import json
