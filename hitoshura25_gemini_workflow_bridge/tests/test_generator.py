@@ -73,6 +73,9 @@ async def test_analyze_codebase_with_custom_patterns(mock_gemini_client, mock_co
 @pytest.mark.asyncio
 async def test_create_specification_with_gemini(mock_gemini_client, mock_codebase_loader, tmp_path):
     """Test create_specification_with_gemini function."""
+    # Mock get_current_context to return None (no cached context)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     # Mock the generate_content to return a spec-like response
     mock_gemini_client.generate_content = AsyncMock(return_value="# Test Spec\n\n## Tasks\n- Task 1\n\n## Files to Create\n- file1.py\n\n## Files to Modify\n- file2.py")
 
@@ -80,7 +83,6 @@ async def test_create_specification_with_gemini(mock_gemini_client, mock_codebas
 
     result = await create_specification_with_gemini(
         feature_description="test feature",
-        context_id=None,
         spec_template="standard",
         output_path=str(output_file)
     )
@@ -108,9 +110,20 @@ async def test_create_specification_with_context(mock_gemini_client, mock_codeba
 
     output_file = tmp_path / "test-spec.md"
 
+    # Mock get_current_context to return cached context
+    mock_gemini_client.get_current_context = Mock(return_value=(
+        {
+            "analysis": {
+                "architecture_summary": "test",
+                "relevant_files": ["file1.py"],
+                "patterns_identified": ["pattern1"]
+            }
+        },
+        "ctx_test123"
+    ))
+
     result = await create_specification_with_gemini(
         feature_description="test feature",
-        context_id="ctx_test123",
         spec_template="minimal",
         output_path=str(output_file)
     )
@@ -125,6 +138,9 @@ async def test_create_specification_with_context(mock_gemini_client, mock_codeba
 @patch('hitoshura25_gemini_workflow_bridge.generator._get_git_diff')
 async def test_review_code_with_gemini(mock_git_diff, mock_gemini_client, tmp_path):
     """Test review_code_with_gemini function."""
+    # Mock get_current_context to return None (no cached context)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     mock_git_diff.return_value = "diff --git a/test.py"
     mock_gemini_client.generate_content = AsyncMock(return_value='{"issues_found": [], "summary": "Looks good", "has_blocking_issues": false, "recommendations": []}')
 
@@ -149,6 +165,9 @@ async def test_review_code_with_gemini(mock_git_diff, mock_gemini_client, tmp_pa
 @pytest.mark.asyncio
 async def test_review_code_with_files(mock_gemini_client, tmp_path):
     """Test review_code_with_gemini with specific files."""
+    # Mock get_current_context to return None (no cached context)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     # Create a test file
     test_file = tmp_path / "test.py"
     test_file.write_text("print('hello')")
@@ -171,6 +190,9 @@ async def test_review_code_with_files(mock_gemini_client, tmp_path):
 @pytest.mark.asyncio
 async def test_generate_documentation_with_gemini(mock_gemini_client, mock_codebase_loader, tmp_path):
     """Test generate_documentation_with_gemini function."""
+    # Mock get_current_context to return None (no cached context)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     mock_gemini_client.analyze_with_context = AsyncMock(return_value="# API Documentation\n\nTest documentation content")
 
     output_file = tmp_path / "api-docs.md"
@@ -198,7 +220,6 @@ async def test_ask_gemini_simple(mock_gemini_client):
     result = await ask_gemini(
         prompt="What is 2+2?",
         include_codebase_context=False,
-        context_id=None,
         temperature=0.7
     )
 
@@ -213,12 +234,14 @@ async def test_ask_gemini_simple(mock_gemini_client):
 @pytest.mark.asyncio
 async def test_ask_gemini_with_context(mock_gemini_client, mock_codebase_loader):
     """Test ask_gemini function with codebase context."""
+    # Mock get_current_context to return None (no cached context, will auto-load)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     mock_gemini_client.analyze_with_context = AsyncMock(return_value="This is the answer with context")
 
     result = await ask_gemini(
         prompt="Explain this codebase",
         include_codebase_context=True,
-        context_id=None,
         temperature=0.5
     )
 
@@ -230,26 +253,29 @@ async def test_ask_gemini_with_context(mock_gemini_client, mock_codebase_loader)
 
 @pytest.mark.asyncio
 async def test_ask_gemini_with_cached_context(mock_gemini_client):
-    """Test ask_gemini function with cached context."""
-    mock_gemini_client.get_cached_context = Mock(return_value={
-        "analysis": {
-            "architecture_summary": "test",
-            "relevant_files": [],
-            "patterns_identified": []
-        }
-    })
+    """Test ask_gemini function with cached context (automatic reuse)."""
+    # Mock get_current_context to return cached context
+    mock_gemini_client.get_current_context = Mock(return_value=(
+        {
+            "analysis": {
+                "architecture_summary": "test",
+                "relevant_files": [],
+                "patterns_identified": []
+            }
+        },
+        "ctx_test123"
+    ))
     mock_gemini_client.analyze_with_context = AsyncMock(return_value="Answer using cached context")
 
     result = await ask_gemini(
         prompt="Question about the code",
-        include_codebase_context=False,
-        context_id="ctx_test123",
+        include_codebase_context=True,
         temperature=0.7
     )
 
     assert isinstance(result, dict)
     assert result["context_used"] is True
-    assert mock_gemini_client.get_cached_context.called
+    assert mock_gemini_client.get_current_context.called
 
 
 @pytest.mark.asyncio
@@ -285,7 +311,10 @@ async def test_auto_load_context(mock_gemini_client, mock_codebase_loader):
 
 @pytest.mark.asyncio
 async def test_create_spec_without_context_id_auto_loads(mock_gemini_client, mock_codebase_loader, tmp_path):
-    """Test that create_specification auto-loads when no context_id provided."""
+    """Test that create_specification auto-loads codebase context."""
+    # Mock get_current_context to return None (no cached context, will auto-load)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     # Mock responses
     mock_gemini_client.analyze_with_context = AsyncMock(
         return_value="# Test Spec\n\n## Tasks\n- Task 1"
@@ -293,7 +322,7 @@ async def test_create_spec_without_context_id_auto_loads(mock_gemini_client, moc
 
     output_file = tmp_path / "spec.md"
 
-    # Call without context_id - should auto-load
+    # Call - should auto-load codebase
     result = await create_specification_with_gemini(
         feature_description="test feature",
         output_path=str(output_file)
@@ -303,19 +332,21 @@ async def test_create_spec_without_context_id_auto_loads(mock_gemini_client, moc
     assert mock_codebase_loader.load_files.called
     assert mock_gemini_client.analyze_with_context.called
 
-    # Verify result includes context_id for reuse
-    assert "context_id" in result
-    assert isinstance(result["context_id"], str)
-    assert result["context_id"].startswith("ctx_")
+    # Verify result structure (no context_id returned - automatic reuse now!)
+    assert "spec_path" in result
+    assert "spec_content" in result
+    assert "context_id" not in result  # No longer returned
 
 
 @pytest.mark.asyncio
 async def test_context_reuse_across_calls(mock_gemini_client, mock_codebase_loader, tmp_path):
-    """Test that context_id can be reused across multiple tool calls."""
-    # First call - auto-loads
+    """Test that context is automatically reused across multiple tool calls."""
+    # First call - auto-loads and caches
     mock_gemini_client.analyze_with_context = AsyncMock(
         return_value="# Test Spec\n\n## Tasks\n- Task 1"
     )
+    # First call has no current context
+    mock_gemini_client.get_current_context = Mock(return_value=None)
 
     spec_output = tmp_path / "spec.md"
     spec_result = await create_specification_with_gemini(
@@ -323,39 +354,37 @@ async def test_context_reuse_across_calls(mock_gemini_client, mock_codebase_load
         output_path=str(spec_output)
     )
 
-    context_id = spec_result["context_id"]
+    # Verify first call loaded codebase
+    initial_load_count = mock_codebase_loader.load_files.call_count
+    assert initial_load_count == 1
 
-    # Reset mock call count
-    mock_codebase_loader.load_files.reset_mock()
+    # Mock get_current_context to return cached context for second call
+    mock_gemini_client.get_current_context = Mock(return_value=(
+        {
+            "files_content": {"test.py": "content"},
+            "project_structure": "structure",
+            "analysis": {
+                "architecture_summary": "test",
+                "relevant_files": [],
+                "patterns_identified": []
+            }
+        },
+        "ctx_auto123"
+    ))
 
-    # Mock get_cached_context to return cached data
-    mock_gemini_client.get_cached_context = Mock(return_value={
-        "files_content": {"test.py": "content"},
-        "project_structure": "structure",
-        "analysis": {
-            "architecture_summary": "test",
-            "relevant_files": [],
-            "patterns_identified": []
-        }
-    })
-
-    # Second call - reuses context_id (should NOT reload codebase)
+    # Second call - automatically reuses cached context (should NOT reload codebase)
     doc_output = tmp_path / "doc.md"
     doc_result = await generate_documentation_with_gemini(
         documentation_type="api",
         scope="test API",
-        output_path=str(doc_output),
-        context_id=context_id  # Reuse context
+        output_path=str(doc_output)
     )
 
-    # Verify codebase was NOT reloaded
-    assert not mock_codebase_loader.load_files.called
+    # Verify codebase was NOT reloaded on second call
+    assert mock_codebase_loader.load_files.call_count == initial_load_count
 
-    # Verify cached context was used
-    assert mock_gemini_client.get_cached_context.called
-
-    # Verify same context_id returned
-    assert doc_result["context_id"] == context_id
+    # Verify get_current_context was called (automatic reuse)
+    assert mock_gemini_client.get_current_context.called
 
 
 def test_cli_not_found():
@@ -432,37 +461,35 @@ async def test_cli_json_parsing():
 
 @pytest.mark.asyncio
 async def test_cache_miss_fallback_in_create_spec(mock_gemini_client, mock_codebase_loader, tmp_path):
-    """Test that create_specification auto-loads when context_id not found in cache."""
-    # Mock cache miss - context_id provided but not in cache
-    mock_gemini_client.get_cached_context = Mock(return_value=None)
+    """Test that create_specification auto-loads when no cached context available."""
+    # Mock cache miss - no current context
+    mock_gemini_client.get_current_context = Mock(return_value=None)
     mock_gemini_client.analyze_with_context = AsyncMock(
         return_value="# Test Spec\\n\\n## Tasks\\n- Task 1"
     )
 
     output_file = tmp_path / "spec.md"
 
-    # Call with context_id that doesn't exist in cache
+    # Call - should auto-load since no current context
     result = await create_specification_with_gemini(
         feature_description="test feature",
-        context_id="ctx_nonexistent",
         output_path=str(output_file)
     )
 
-    # Should have auto-loaded codebase when cache miss occurred
+    # Should have auto-loaded codebase when no cached context
     assert mock_codebase_loader.load_files.called
     assert mock_gemini_client.analyze_with_context.called
 
-    # Should return a valid context_id (auto-generated)
-    assert "context_id" in result
-    assert isinstance(result["context_id"], str)
-    assert result["context_id"].startswith("ctx_")
+    # Should return valid result (no context_id in response anymore)
+    assert "spec_path" in result
+    assert "spec_content" in result
 
 
 @pytest.mark.asyncio
 async def test_cache_miss_fallback_in_review(mock_gemini_client, mock_codebase_loader, tmp_path):
-    """Test that review_code auto-loads when context_id not found in cache."""
-    # Mock cache miss
-    mock_gemini_client.get_cached_context = Mock(return_value=None)
+    """Test that review_code auto-loads when no cached context available."""
+    # Mock cache miss - no current context
+    mock_gemini_client.get_current_context = Mock(return_value=None)
     mock_gemini_client.analyze_with_context = AsyncMock(
         return_value='{"issues_found": [], "summary": "Looks good", "has_blocking_issues": false, "recommendations": []}'
     )
@@ -470,20 +497,19 @@ async def test_cache_miss_fallback_in_review(mock_gemini_client, mock_codebase_l
     with patch('hitoshura25_gemini_workflow_bridge.generator._get_git_diff', return_value="diff --git a/test.py"):
         output_file = tmp_path / "review.md"
 
-        # Call with context_id that doesn't exist in cache
+        # Call - should auto-load since no current context
         result = await review_code_with_gemini(
             files=None,
-            context_id="ctx_nonexistent",
             output_path=str(output_file)
         )
 
-        # Should have auto-loaded codebase when cache miss occurred
+        # Should have auto-loaded codebase when no cached context
         assert mock_codebase_loader.load_files.called
         assert mock_gemini_client.analyze_with_context.called
 
-        # Should return a valid context_id
-        assert "context_id" in result
-        assert isinstance(result["context_id"], str)
+        # Should return valid result (no context_id in response anymore)
+        assert "review_path" in result
+        assert "review_content" in result
 
 
 @pytest.mark.asyncio
@@ -510,6 +536,9 @@ async def test_error_handling_in_auto_load(mock_gemini_client, mock_codebase_loa
 @pytest.mark.asyncio
 async def test_spec_creation_with_error_fallback(mock_gemini_client, mock_codebase_loader, tmp_path):
     """Test that create_specification continues with fallback context on load error."""
+    # Mock get_current_context to return None (no cached context, will try to auto-load)
+    mock_gemini_client.get_current_context = Mock(return_value=None)
+
     # Mock codebase loader to raise an exception
     mock_codebase_loader.load_files = Mock(side_effect=Exception("Disk full"))
 
@@ -526,7 +555,136 @@ async def test_spec_creation_with_error_fallback(mock_gemini_client, mock_codeba
         output_path=str(output_file)
     )
 
-    # Should still return valid result
+    # Should still return valid result (context_id no longer returned)
     assert "spec_path" in result
-    assert "context_id" in result
-    assert result["context_id"].startswith("ctx_error_")
+    assert "spec_content" in result
+
+
+@pytest.mark.asyncio
+async def test_create_specification_handles_empty_response(tmp_path, mock_codebase_loader):
+    """Test that create_specification_with_gemini handles empty CLI responses."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        output_file = tmp_path / "spec.md"
+
+        # Should raise RuntimeError with clear message
+        result = await create_specification_with_gemini(
+            feature_description="test feature",
+            output_path=str(output_file)
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("spec_content", "")
+
+
+@pytest.mark.asyncio
+async def test_review_code_handles_none_response(tmp_path, mock_codebase_loader):
+    """Test that review_code_with_gemini handles None/empty responses."""
+    # Create test file
+    test_file = tmp_path / "test.py"
+    test_file.write_text("print('test')")
+
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        # Simulate empty response (though validation should catch this)
+        mock_client.analyze_with_context = AsyncMock(return_value="   ")  # Whitespace only
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        output_file = tmp_path / "review.md"
+
+        # Should raise RuntimeError with clear message
+        result = await review_code_with_gemini(
+            files=[str(test_file)],
+            output_path=str(output_file)
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("review_content", "")
+
+
+@pytest.mark.asyncio
+async def test_analyze_codebase_handles_empty_response(mock_codebase_loader):
+    """Test that analyze_codebase_with_gemini handles empty responses."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.cache_context = Mock()
+        mock_client_fn.return_value = mock_client
+
+        # Should raise RuntimeError with clear message
+        result = await analyze_codebase_with_gemini(
+            focus_description="test analysis"
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("analysis", "")
+
+
+@pytest.mark.asyncio
+async def test_generate_documentation_handles_empty_response(tmp_path, mock_codebase_loader):
+    """Test that generate_documentation_with_gemini handles empty responses."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        output_file = tmp_path / "docs.md"
+
+        # Should raise RuntimeError with clear message
+        result = await generate_documentation_with_gemini(
+            documentation_type="api",
+            scope="test",
+            output_path=str(output_file)
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("doc_content", "")
+
+
+@pytest.mark.asyncio
+async def test_ask_gemini_handles_empty_response_with_context(mock_codebase_loader):
+    """Test that ask_gemini handles empty responses when using context."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        # Should raise RuntimeError with clear message
+        result = await ask_gemini(
+            prompt="test question",
+            include_codebase_context=True
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("response", "")
+
+
+@pytest.mark.asyncio
+async def test_ask_gemini_handles_empty_response_without_context():
+    """Test that ask_gemini handles empty responses without context."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.generate_content = AsyncMock(return_value="")  # Empty response
+        mock_client_fn.return_value = mock_client
+
+        # Should raise RuntimeError with clear message
+        result = await ask_gemini(
+            prompt="test question",
+            include_codebase_context=False
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("response", "")

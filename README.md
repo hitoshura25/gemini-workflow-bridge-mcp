@@ -83,7 +83,7 @@ echo "What is 2+2?" | gemini
 # Should return a response from Gemini
 ```
 
-### Optional: Configure Model
+### Optional: Configure Model and Context Cache
 
 Create a `.env` file (optional):
 
@@ -96,6 +96,11 @@ GEMINI_MODEL=auto
 # Or specify a specific model:
 # GEMINI_MODEL=gemini-2.0-flash
 # GEMINI_MODEL=gemini-1.5-pro
+
+# Context Cache TTL
+# How long to cache codebase context before reloading (in minutes)
+# Default: 30 minutes
+CONTEXT_CACHE_TTL_MINUTES=30
 
 DEFAULT_SPEC_DIR=./specs
 DEFAULT_REVIEW_DIR=./reviews
@@ -136,11 +141,15 @@ Add the server to your Claude Code MCP configuration (`~/.claude/config.json` or
 
 ## Usage Examples
 
-### How It Works: Automatic Context Loading
+### How It Works: Automatic Context Reuse
 
-**NEW in v1.1**: All tools now automatically load and analyze your codebase when called, so you can use them directly without manual setup!
+**Key Features:**
+- ✅ **Automatic Context Loading**: First tool call automatically loads and analyzes your codebase
+- ✅ **Automatic Context Reuse**: Subsequent calls within 30 minutes reuse the same context (configurable via `CONTEXT_CACHE_TTL_MINUTES`)
+- ✅ **Zero Manual Management**: No `context_id` parameters to track or pass around
+- ✅ **Smart Cache Expiration**: Context expires after TTL, automatically reloads when needed
 
-**Single Call Workflow** (Recommended for most use cases):
+**Workflow Example:**
 ```
 User: "Create a spec for adding 2FA authentication"
 
@@ -151,44 +160,29 @@ Claude Code:
 
 Behind the scenes:
 1. ✅ Automatically loads codebase (*.py, *.js, *.ts, etc.)
-2. ✅ Performs inline architectural analysis
+2. ✅ Caches context for 30 minutes (default TTL)
 3. ✅ Generates context-aware specification
-4. ✅ Returns context_id for reuse in subsequent calls
 
-Result: High-quality spec that understands your existing auth system!
+User: "Now review my auth.py file"
+
+Claude Code:
+[Calls: review_code_with_gemini({
+  files: ["auth.py", "middleware.py"]
+})]
+
+Behind the scenes:
+1. ✅ Automatically reuses cached context from previous call (fast!)
+2. ✅ No reload needed - same codebase understanding
+3. ✅ Performs context-aware code review
+
+Result: Fast, seamless workflow with automatic context management!
 ```
 
-**Optimized Multi-Call Workflow** (For multiple related operations):
-```
-# First call - auto-loads codebase
-spec_result = create_specification_with_gemini({
-  feature_description: "2FA authentication"
-})
-# Returns: { ..., "context_id": "ctx_abc123" }
-
-# Second call - reuses cached context (faster!)
-review_result = review_code_with_gemini({
-  files: ["auth.py", "middleware.py"],
-  context_id: "ctx_abc123"  # Skip reload
-})
-
-Result: Fast subsequent calls that share the same codebase understanding!
-```
-
-**Manual Control** (Advanced - for custom analysis):
-```
-# Step 1: Explicit analysis with custom patterns
-analysis = analyze_codebase_with_gemini({
-  focus_description: "authentication and security patterns",
-  file_patterns: ["*.py", "*.ts"],
-  directories: ["src/auth", "src/middleware"]
-})
-
-# Step 2: Use the context_id for targeted operations
-spec = create_specification_with_gemini({
-  feature_description: "2FA with TOTP",
-  context_id: analysis.cached_context_id
-})
+**Configure Cache TTL** (Optional):
+```env
+# .env file
+# Default: 30 minutes
+CONTEXT_CACHE_TTL_MINUTES=60  # Keep context for 1 hour
 ```
 
 ---
@@ -323,11 +317,10 @@ Analyze codebase using Gemini's 2M token context window.
 
 ### create_specification_with_gemini
 
-Generate detailed technical specification with automatic codebase loading.
+Generate detailed technical specification with automatic codebase context.
 
 **Parameters:**
 - `feature_description` (string, required): What feature to specify
-- `context_id` (string, optional): Context ID from previous analysis. **If not provided, automatically loads codebase.**
 - `spec_template` (string, optional): Template to use ("standard", "minimal", "comprehensive")
 - `output_path` (string, optional): Where to save the spec
 
@@ -339,23 +332,21 @@ Generate detailed technical specification with automatic codebase loading.
   "implementation_tasks": [{"task": "...", "order": 1}],
   "estimated_complexity": "medium",
   "files_to_modify": ["file1.py"],
-  "files_to_create": ["file2.py"],
-  "context_id": "ctx_abc123"
+  "files_to_create": ["file2.py"]
 }
 ```
 
-*Note: The `context_id` can be used for subsequent tool calls to skip reloading.*
+*Note: Context is automatically cached for reuse in subsequent tool calls within the session.*
 
 ### review_code_with_gemini
 
-Comprehensive code review with automatic codebase loading.
+Comprehensive code review with automatic codebase context.
 
 **Parameters:**
 - `files` (array, optional): Files to review (default: git diff)
 - `review_focus` (array, optional): Focus areas (default: `["security", "performance", "best-practices", "testing"]`)
 - `spec_path` (string, optional): Specification to review against
 - `output_path` (string, optional): Where to save review
-- `context_id` (string, optional): Context ID from previous analysis. **If not provided, automatically loads codebase.**
 
 **Returns:**
 ```json
@@ -372,23 +363,21 @@ Comprehensive code review with automatic codebase loading.
   }],
   "has_blocking_issues": true,
   "summary": "Review summary",
-  "recommendations": ["Add input validation", "Use ORM"],
-  "context_id": "ctx_abc123"
+  "recommendations": ["Add input validation", "Use ORM"]
 }
 ```
 
-*Note: The `context_id` can be used for subsequent tool calls to skip reloading.*
+*Note: Context is automatically cached for reuse in subsequent tool calls within the session.*
 
 ### generate_documentation_with_gemini
 
-Generate comprehensive documentation with automatic codebase loading.
+Generate comprehensive documentation with automatic codebase context.
 
 **Parameters:**
 - `documentation_type` (string, required): Type ("api", "architecture", "user-guide", "readme", "contributing")
 - `scope` (string, required): What to document
 - `output_path` (string, optional): Where to save documentation
 - `include_examples` (boolean, optional): Include code examples (default: true)
-- `context_id` (string, optional): Context ID from previous analysis. **If not provided, automatically loads codebase.**
 
 **Returns:**
 ```json
@@ -396,12 +385,11 @@ Generate comprehensive documentation with automatic codebase loading.
   "doc_path": "./docs/api-documentation.md",
   "doc_content": "Full markdown documentation",
   "sections": ["overview", "endpoints", "examples"],
-  "word_count": 2500,
-  "context_id": "ctx_abc123"
+  "word_count": 2500
 }
 ```
 
-*Note: The `context_id` can be used for subsequent tool calls to skip reloading.*
+*Note: Context is automatically cached for reuse in subsequent tool calls within the session.*
 
 ### ask_gemini
 
@@ -409,8 +397,7 @@ General-purpose Gemini query with optional codebase context.
 
 **Parameters:**
 - `prompt` (string, required): Question or task
-- `include_codebase_context` (boolean, optional): Load full codebase (default: false). **If true and no context_id, automatically loads codebase.**
-- `context_id` (string, optional): Reuse cached context
+- `include_codebase_context` (boolean, optional): Load full codebase (default: false). **If true, automatically loads or reuses cached context.**
 - `temperature` (number, optional): Generation temperature 0.0-1.0 (default: 0.7)
 
 **Returns:**
@@ -418,12 +405,11 @@ General-purpose Gemini query with optional codebase context.
 {
   "response": "Gemini's response",
   "context_used": true,
-  "token_count": 150000,
-  "context_id": "ctx_abc123"
+  "token_count": 150000
 }
 ```
 
-*Note: `context_id` is included when context is used and can be reused for subsequent calls.*
+*Note: Context is automatically cached for reuse in subsequent tool calls within the session.*
 
 ## Architecture
 
