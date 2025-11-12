@@ -558,3 +558,133 @@ async def test_spec_creation_with_error_fallback(mock_gemini_client, mock_codeba
     # Should still return valid result (context_id no longer returned)
     assert "spec_path" in result
     assert "spec_content" in result
+
+
+@pytest.mark.asyncio
+async def test_create_specification_handles_empty_response(tmp_path, mock_codebase_loader):
+    """Test that create_specification_with_gemini handles empty CLI responses."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        output_file = tmp_path / "spec.md"
+
+        # Should raise RuntimeError with clear message
+        result = await create_specification_with_gemini(
+            feature_description="test feature",
+            output_path=str(output_file)
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("spec_content", "")
+
+
+@pytest.mark.asyncio
+async def test_review_code_handles_none_response(tmp_path, mock_codebase_loader):
+    """Test that review_code_with_gemini handles None/empty responses."""
+    # Create test file
+    test_file = tmp_path / "test.py"
+    test_file.write_text("print('test')")
+
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        # Simulate empty response (though validation should catch this)
+        mock_client.analyze_with_context = AsyncMock(return_value="   ")  # Whitespace only
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        output_file = tmp_path / "review.md"
+
+        # Should raise RuntimeError with clear message
+        result = await review_code_with_gemini(
+            files=[str(test_file)],
+            output_path=str(output_file)
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("review_content", "")
+
+
+@pytest.mark.asyncio
+async def test_analyze_codebase_handles_empty_response(mock_codebase_loader):
+    """Test that analyze_codebase_with_gemini handles empty responses."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.cache_context = Mock()
+        mock_client_fn.return_value = mock_client
+
+        # Should raise RuntimeError with clear message
+        result = await analyze_codebase_with_gemini(
+            focus_description="test analysis"
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("analysis", "")
+
+
+@pytest.mark.asyncio
+async def test_generate_documentation_handles_empty_response(tmp_path, mock_codebase_loader):
+    """Test that generate_documentation_with_gemini handles empty responses."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        output_file = tmp_path / "docs.md"
+
+        # Should raise RuntimeError with clear message
+        result = await generate_documentation_with_gemini(
+            documentation_type="api",
+            scope="test",
+            output_path=str(output_file)
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("doc_content", "")
+
+
+@pytest.mark.asyncio
+async def test_ask_gemini_handles_empty_response_with_context(mock_codebase_loader):
+    """Test that ask_gemini handles empty responses when using context."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.analyze_with_context = AsyncMock(return_value="")  # Empty response
+        mock_client.get_current_context = Mock(return_value=None)
+        mock_client_fn.return_value = mock_client
+
+        # Should raise RuntimeError with clear message
+        result = await ask_gemini(
+            prompt="test question",
+            include_codebase_context=True
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("response", "")
+
+
+@pytest.mark.asyncio
+async def test_ask_gemini_handles_empty_response_without_context():
+    """Test that ask_gemini handles empty responses without context."""
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_gemini_client') as mock_client_fn:
+        mock_client = Mock()
+        mock_client.generate_content = AsyncMock(return_value="")  # Empty response
+        mock_client_fn.return_value = mock_client
+
+        # Should raise RuntimeError with clear message
+        result = await ask_gemini(
+            prompt="test question",
+            include_codebase_context=False
+        )
+
+        # Should return error result (wrapped in try-except)
+        assert "error" in result
+        assert "empty" in result["error"].lower() or "Empty" in result.get("response", "")

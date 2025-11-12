@@ -128,6 +128,13 @@ Format your response as structured JSON with these sections."""
             temperature=0.7
         )
 
+        # Defensive validation
+        if not response or not response.strip():
+            raise RuntimeError(
+                "Received empty response from Gemini CLI for codebase analysis. "
+                "Check authentication: gemini --version"
+            )
+
         # Parse response
         try:
             analysis = json.loads(response)
@@ -220,6 +227,13 @@ Format as JSON with keys: architecture_summary, relevant_files, patterns_identif
             context=context,
             temperature=0.7
         )
+
+        # Defensive validation
+        if not analysis_response or not analysis_response.strip():
+            raise RuntimeError(
+                "Received empty analysis response from Gemini CLI. "
+                "Check authentication: gemini --version"
+            )
 
         # Parse analysis
         try:
@@ -504,6 +518,13 @@ Provide the complete specification in markdown format."""
             temperature=0.7
         )
 
+        # Defensive validation
+        if not spec_content or not spec_content.strip():
+            raise RuntimeError(
+                "Received empty specification response from Gemini CLI. "
+                "Check authentication: gemini --version"
+            )
+
         # Determine output path
         if not output_path:
             feature_slug = feature_description.lower().replace(' ', '-')[:50]
@@ -704,6 +725,13 @@ Format your response as JSON with this structure:
             temperature=0.3
         )
 
+        # Defensive validation
+        if not response or not response.strip():
+            raise RuntimeError(
+                "Received empty review response from Gemini CLI. "
+                "Check authentication: gemini --version"
+            )
+
         # Parse response
         try:
             review_data = json.loads(response)
@@ -796,6 +824,13 @@ Provide the complete documentation in markdown format."""
             temperature=0.7
         )
 
+        # Defensive validation
+        if not doc_content or not doc_content.strip():
+            raise RuntimeError(
+                "Received empty documentation response from Gemini CLI. "
+                "Check authentication: gemini --version"
+            )
+
         # Determine output path
         if not output_path:
             doc_type_slug = documentation_type.lower().replace(' ', '-')
@@ -859,6 +894,13 @@ async def ask_gemini(
                 temperature=temp
             )
 
+            # Defensive validation
+            if not response or not response.strip():
+                raise RuntimeError(
+                    "Received empty response from Gemini CLI. "
+                    "Check authentication: gemini --version"
+                )
+
             return {
                 "response": response,
                 "context_used": True,
@@ -871,6 +913,13 @@ async def ask_gemini(
                 prompt=prompt,
                 temperature=temp
             )
+
+            # Defensive validation
+            if not response or not response.strip():
+                raise RuntimeError(
+                    "Received empty response from Gemini CLI. "
+                    "Check authentication: gemini --version"
+                )
 
             return {
                 "response": response,

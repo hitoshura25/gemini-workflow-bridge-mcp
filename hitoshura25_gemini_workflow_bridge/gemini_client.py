@@ -1,5 +1,6 @@
 """Gemini CLI client wrapper using subprocess"""
 import json
+import logging
 import os
 import shutil
 import asyncio
@@ -7,6 +8,9 @@ import subprocess
 from typing import Optional, Dict, Any
 
 from .cache_manager import ContextCacheManager
+
+# Set up logger for debugging
+logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
@@ -87,6 +91,12 @@ class GeminiClient:
                 await process.wait()
                 raise RuntimeError("Gemini CLI request timed out after 5 minutes")
 
+            # Add debug logging
+            logger.debug(f"Gemini CLI returncode: {process.returncode}")
+            logger.debug(f"Gemini CLI stdout length: {len(stdout)}")
+            if stderr:
+                logger.debug(f"Gemini CLI stderr: {stderr.decode('utf-8', errors='replace')}")
+
             # Check for errors
             if process.returncode != 0:
                 error_msg = stderr.decode('utf-8', errors='replace').strip()
@@ -95,18 +105,59 @@ class GeminiClient:
             # Parse JSON response
             try:
                 output = stdout.decode('utf-8', errors='replace')
+
+                # Log raw output for debugging (truncated)
+                logger.debug(f"Gemini CLI raw output (first 500 chars): {output[:500]}")
+
+                # Validate output is not empty
+                if not output or not output.strip():
+                    raise RuntimeError(
+                        "Gemini CLI returned empty response. "
+                        "Check authentication with: gemini --version"
+                    )
+
                 result = json.loads(output)
 
                 # Extract response text from CLI JSON format
                 if isinstance(result, dict) and "response" in result:
-                    return result["response"]
+                    response = result["response"]
+
+                    # Validate response is not None
+                    if response is None:
+                        raise RuntimeError(
+                            f"Gemini CLI returned None response. "
+                            f"Raw output: {json.dumps(result)}"
+                        )
+
+                    # Validate response is not empty
+                    if not response.strip():
+                        raise RuntimeError(
+                            f"Gemini CLI returned empty response string. "
+                            f"Raw output: {json.dumps(result)}"
+                        )
+
+                    return response
                 else:
+                    # Non-dict response or missing "response" key
+                    if not output.strip():
+                        raise RuntimeError(
+                            "Gemini CLI returned non-JSON empty output. "
+                            "Check CLI status with: gemini --version"
+                        )
                     # Fallback: return raw output if format unexpected
                     return output
 
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, return raw output
                 output = stdout.decode('utf-8', errors='replace')
+
+                # Validate decoded output
+                if not output or not output.strip():
+                    raise RuntimeError(
+                        f"Gemini CLI returned invalid/empty output. "
+                        f"JSON decode error: {str(e)}"
+                    )
+
                 return output
 
         except Exception as e:
