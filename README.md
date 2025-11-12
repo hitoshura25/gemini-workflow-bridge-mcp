@@ -136,6 +136,63 @@ Add the server to your Claude Code MCP configuration (`~/.claude/config.json` or
 
 ## Usage Examples
 
+### How It Works: Automatic Context Loading
+
+**NEW in v1.1**: All tools now automatically load and analyze your codebase when called, so you can use them directly without manual setup!
+
+**Single Call Workflow** (Recommended for most use cases):
+```
+User: "Create a spec for adding 2FA authentication"
+
+Claude Code:
+[Calls: create_specification_with_gemini({
+  feature_description: "2FA authentication"
+})]
+
+Behind the scenes:
+1. ✅ Automatically loads codebase (*.py, *.js, *.ts, etc.)
+2. ✅ Performs inline architectural analysis
+3. ✅ Generates context-aware specification
+4. ✅ Returns context_id for reuse in subsequent calls
+
+Result: High-quality spec that understands your existing auth system!
+```
+
+**Optimized Multi-Call Workflow** (For multiple related operations):
+```
+# First call - auto-loads codebase
+spec_result = create_specification_with_gemini({
+  feature_description: "2FA authentication"
+})
+# Returns: { ..., "context_id": "ctx_abc123" }
+
+# Second call - reuses cached context (faster!)
+review_result = review_code_with_gemini({
+  files: ["auth.py", "middleware.py"],
+  context_id: "ctx_abc123"  // Skip reload
+})
+
+Result: Fast subsequent calls that share the same codebase understanding!
+```
+
+**Manual Control** (Advanced - for custom analysis):
+```
+# Step 1: Explicit analysis with custom patterns
+analysis = analyze_codebase_with_gemini({
+  focus_description: "authentication and security patterns",
+  file_patterns: ["*.py", "*.ts"],
+  directories: ["src/auth", "src/middleware"]
+})
+
+# Step 2: Use the context_id for targeted operations
+spec = create_specification_with_gemini({
+  feature_description: "2FA with TOTP",
+  context_id: analysis.cached_context_id
+})
+```
+
+---
+
 ### Example 1: Analyze Codebase
 
 Claude Code can use this to analyze your codebase before implementing a feature:
@@ -266,11 +323,11 @@ Analyze codebase using Gemini's 2M token context window.
 
 ### create_specification_with_gemini
 
-Generate detailed technical specification.
+Generate detailed technical specification with automatic codebase loading.
 
 **Parameters:**
 - `feature_description` (string, required): What feature to specify
-- `context_id` (string, optional): Context ID from previous analysis
+- `context_id` (string, optional): Context ID from previous analysis. **If not provided, automatically loads codebase.**
 - `spec_template` (string, optional): Template to use ("standard", "minimal", "comprehensive")
 - `output_path` (string, optional): Where to save the spec
 
@@ -282,19 +339,21 @@ Generate detailed technical specification.
   "implementation_tasks": [{"task": "...", "order": 1}],
   "estimated_complexity": "medium",
   "files_to_modify": ["file1.py"],
-  "files_to_create": ["file2.py"]
+  "files_to_create": ["file2.py"],
+  "context_id": "ctx_abc123"  // NEW: Use for subsequent calls
 }
 ```
 
 ### review_code_with_gemini
 
-Comprehensive code review.
+Comprehensive code review with automatic codebase loading.
 
 **Parameters:**
 - `files` (array, optional): Files to review (default: git diff)
 - `review_focus` (array, optional): Focus areas (default: `["security", "performance", "best-practices", "testing"]`)
 - `spec_path` (string, optional): Specification to review against
 - `output_path` (string, optional): Where to save review
+- `context_id` (string, optional): Context ID from previous analysis. **If not provided, automatically loads codebase.**
 
 **Returns:**
 ```json
@@ -310,19 +369,22 @@ Comprehensive code review.
     "suggestion": "Use parameterized queries"
   }],
   "has_blocking_issues": true,
-  "summary": "Review summary"
+  "summary": "Review summary",
+  "recommendations": ["Add input validation", "Use ORM"],
+  "context_id": "ctx_abc123"  // NEW: Use for subsequent calls
 }
 ```
 
 ### generate_documentation_with_gemini
 
-Generate comprehensive documentation.
+Generate comprehensive documentation with automatic codebase loading.
 
 **Parameters:**
 - `documentation_type` (string, required): Type ("api", "architecture", "user-guide", "readme", "contributing")
 - `scope` (string, required): What to document
 - `output_path` (string, optional): Where to save documentation
 - `include_examples` (boolean, optional): Include code examples (default: true)
+- `context_id` (string, optional): Context ID from previous analysis. **If not provided, automatically loads codebase.**
 
 **Returns:**
 ```json
@@ -330,17 +392,18 @@ Generate comprehensive documentation.
   "doc_path": "./docs/api-documentation.md",
   "doc_content": "Full markdown documentation",
   "sections": ["overview", "endpoints", "examples"],
-  "word_count": 2500
+  "word_count": 2500,
+  "context_id": "ctx_abc123"  // NEW: Use for subsequent calls
 }
 ```
 
 ### ask_gemini
 
-General-purpose Gemini query.
+General-purpose Gemini query with optional codebase context.
 
 **Parameters:**
 - `prompt` (string, required): Question or task
-- `include_codebase_context` (boolean, optional): Load full codebase (default: false)
+- `include_codebase_context` (boolean, optional): Load full codebase (default: false). **If true and no context_id, automatically loads codebase.**
 - `context_id` (string, optional): Reuse cached context
 - `temperature` (number, optional): Generation temperature 0.0-1.0 (default: 0.7)
 
@@ -349,7 +412,8 @@ General-purpose Gemini query.
 {
   "response": "Gemini's response",
   "context_used": true,
-  "token_count": 150000
+  "token_count": 150000,
+  "context_id": "ctx_abc123"  // Included when context is used
 }
 ```
 
