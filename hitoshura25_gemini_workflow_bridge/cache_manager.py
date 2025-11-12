@@ -4,7 +4,6 @@ Context cache manager with TTL support for automatic context reuse.
 
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
-import os
 
 
 class ContextCacheManager:
@@ -80,6 +79,23 @@ class ContextCacheManager:
 
         return entry["data"]
 
+    def _is_valid_context(self, context_id: str) -> bool:
+        """Check if context exists and is not expired without incrementing stats.
+
+        Internal method for validation that doesn't have side effects.
+
+        Args:
+            context_id: Context ID to validate
+
+        Returns:
+            True if context exists and is not expired, False otherwise
+        """
+        if context_id not in self.cache:
+            return False
+
+        # Check expiration without side effects
+        return datetime.now() <= self.cache[context_id]["expires_at"]
+
     def get_current_context(self) -> Optional[tuple[Dict[str, Any], str]]:
         """Get the current active context.
 
@@ -89,12 +105,14 @@ class ContextCacheManager:
         if not self.current_context_id:
             return None
 
-        context = self.get_cached_context(self.current_context_id)
-        if context:
-            return context, self.current_context_id
+        # Check validity without inflating stats
+        if not self._is_valid_context(self.current_context_id):
+            # Current context expired, clear it
+            self.current_context_id = None
+            return None
 
-        # Current context expired
-        return None
+        # Return data directly without going through get_cached_context
+        return self.cache[self.current_context_id]["data"], self.current_context_id
 
     def set_current_context(self, context_id: str) -> bool:
         """Set a context as the current context.
@@ -105,7 +123,7 @@ class ContextCacheManager:
         Returns:
             True if successful, False if context not found/expired
         """
-        if self.get_cached_context(context_id):
+        if self._is_valid_context(context_id):
             self.current_context_id = context_id
             return True
         return False

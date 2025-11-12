@@ -307,3 +307,84 @@ def test_ttl_configuration():
 
     expected_expiry = entry["cached_at"] + timedelta(minutes=1)
     assert abs((entry["expires_at"] - expected_expiry).total_seconds()) < 1
+
+
+def test_get_current_context_no_stat_inflation():
+    """Test that get_current_context() doesn't inflate cache statistics."""
+    cache = ContextCacheManager()
+
+    # Cache a context
+    cache.cache_context("ctx_test", {"test": "data"})
+
+    # Reset stats to zero
+    cache.stats["hits"] = 0
+    cache.stats["misses"] = 0
+
+    # Call get_current_context multiple times
+    for _ in range(5):
+        result = cache.get_current_context()
+        assert result is not None
+        assert result[1] == "ctx_test"
+
+    # Verify stats were NOT inflated
+    assert cache.stats["hits"] == 0
+    assert cache.stats["misses"] == 0
+
+    # Verify access_count was NOT incremented
+    entry = cache.cache["ctx_test"]
+    assert entry["access_count"] == 0
+
+
+def test_set_current_context_no_stat_inflation():
+    """Test that set_current_context() doesn't inflate cache statistics."""
+    cache = ContextCacheManager()
+
+    # Cache contexts
+    cache.cache_context("ctx_1", {"data": "1"}, set_as_current=False)
+    cache.cache_context("ctx_2", {"data": "2"}, set_as_current=False)
+
+    # Reset stats to zero
+    cache.stats["hits"] = 0
+    cache.stats["misses"] = 0
+
+    # Set current context multiple times
+    for _ in range(5):
+        success = cache.set_current_context("ctx_1")
+        assert success is True
+
+    # Verify stats were NOT inflated
+    assert cache.stats["hits"] == 0
+    assert cache.stats["misses"] == 0
+
+    # Verify access_count was NOT incremented
+    entry = cache.cache["ctx_1"]
+    assert entry["access_count"] == 0
+
+
+def test_only_get_cached_context_inflates_stats():
+    """Test that only get_cached_context() increments statistics."""
+    cache = ContextCacheManager()
+
+    # Cache a context
+    cache.cache_context("ctx_test", {"test": "data"})
+
+    # Reset stats
+    cache.stats["hits"] = 0
+    cache.stats["misses"] = 0
+
+    # Call get_current_context and set_current_context (should not inflate)
+    cache.get_current_context()
+    cache.set_current_context("ctx_test")
+
+    assert cache.stats["hits"] == 0
+    assert cache.stats["misses"] == 0
+
+    # Now call get_cached_context (should inflate)
+    cache.get_cached_context("ctx_test")
+
+    assert cache.stats["hits"] == 1
+    assert cache.stats["misses"] == 0
+
+    # Check access count
+    entry = cache.cache["ctx_test"]
+    assert entry["access_count"] == 1

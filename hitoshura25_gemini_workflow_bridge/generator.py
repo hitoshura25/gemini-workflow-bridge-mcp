@@ -5,7 +5,6 @@ MCP server that bridges Claude Code to Gemini CLI for workflow tasks like codeba
 """
 
 from typing import Any, Dict, List
-import asyncio
 import hashlib
 import json
 import os
@@ -297,11 +296,13 @@ async def _get_or_load_context(
 
     if current:
         context_data, context_id = current
-        print(f"ℹ️  Reusing cached context (ID: {context_id[:12]}..., TTL: {gemini_client.cache_manager.ttl_minutes}min)")
+        # Safe truncation for display
+        context_id_display = context_id[:12] + "..." if len(context_id) > 12 else context_id
+        print(f"[INFO] Reusing cached context (ID: {context_id_display}, TTL: {gemini_client.cache_manager.ttl_minutes}min)")
         return _format_cached_context(context_data), context_id
 
     # No current context or expired - auto-load
-    print(f"ℹ️  Loading fresh codebase context (TTL: {gemini_client.cache_manager.ttl_minutes} minutes)...")
+    print(f"[INFO] Loading fresh codebase context (TTL: {gemini_client.cache_manager.ttl_minutes} minutes)...")
     return await _auto_load_context(focus_description)
 
 

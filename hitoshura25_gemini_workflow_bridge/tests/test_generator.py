@@ -149,6 +149,7 @@ async def test_review_code_with_gemini(mock_git_diff, mock_gemini_client, tmp_pa
     result = await review_code_with_gemini(
         files=None,
         review_focus=None,
+        spec_path=None,
         output_path=str(output_file)
     )
 
@@ -178,6 +179,7 @@ async def test_review_code_with_files(mock_gemini_client, tmp_path):
     result = await review_code_with_gemini(
         files=[str(test_file)],
         review_focus=["security", "performance"],
+        spec_path=None,
         output_path=str(output_file)
     )
 
