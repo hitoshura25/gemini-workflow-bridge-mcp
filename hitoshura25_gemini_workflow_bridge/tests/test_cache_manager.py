@@ -2,9 +2,8 @@
 Tests for ContextCacheManager.
 """
 
-import pytest
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from hitoshura25_gemini_workflow_bridge.cache_manager import ContextCacheManager
 
 
