@@ -182,30 +182,32 @@ async def _auto_load_context(
 
     Returns:
         Tuple of (formatted_context_string, context_id)
+        On error, returns minimal fallback context with error details
     """
-    # Get clients
-    gemini_client = _get_gemini_client()
-    codebase_loader = _get_codebase_loader()
+    try:
+        # Get clients
+        gemini_client = _get_gemini_client()
+        codebase_loader = _get_codebase_loader()
 
-    # Use default patterns for auto-loading
-    patterns = ["*.py", "*.js", "*.ts", "*.java", "*.go"]
-    excludes = ["node_modules/", "dist/", "build/", "__pycache__/"]
+        # Use default patterns for auto-loading
+        patterns = ["*.py", "*.js", "*.ts", "*.java", "*.go"]
+        excludes = ["node_modules/", "dist/", "build/", "__pycache__/"]
 
-    # Load codebase
-    files_content = codebase_loader.load_files(
-        file_patterns=patterns,
-        exclude_patterns=excludes,
-        directories=None  # Load from current directory
-    )
+        # Load codebase
+        files_content = codebase_loader.load_files(
+            file_patterns=patterns,
+            exclude_patterns=excludes,
+            directories=None  # Load from current directory
+        )
 
-    # Get project structure
-    project_structure = codebase_loader.get_project_structure()
+        # Get project structure
+        project_structure = codebase_loader.get_project_structure()
 
-    # Build context
-    context = _build_codebase_context(files_content, project_structure)
+        # Build context
+        context = _build_codebase_context(files_content, project_structure)
 
-    # Perform quick inline analysis
-    prompt = f"""Analyze this codebase briefly with focus on: {focus_description}
+        # Perform quick inline analysis
+        prompt = f"""Analyze this codebase briefly with focus on: {focus_description}
 
 Provide:
 1. Architecture summary
@@ -214,40 +216,92 @@ Provide:
 
 Format as JSON with keys: architecture_summary, relevant_files, patterns_identified"""
 
-    analysis_response = await gemini_client.analyze_with_context(
-        prompt=prompt,
-        context=context,
-        temperature=0.7
-    )
+        analysis_response = await gemini_client.analyze_with_context(
+            prompt=prompt,
+            context=context,
+            temperature=0.7
+        )
 
-    # Parse analysis
-    try:
-        analysis = json.loads(analysis_response)
-    except json.JSONDecodeError:
-        analysis = {
-            "architecture_summary": analysis_response[:500],
-            "relevant_files": [],
-            "patterns_identified": []
-        }
+        # Parse analysis
+        try:
+            analysis = json.loads(analysis_response)
+        except json.JSONDecodeError:
+            analysis = {
+                "architecture_summary": analysis_response[:500],
+                "relevant_files": [],
+                "patterns_identified": []
+            }
 
-    # Generate context ID
-    context_id = _generate_context_id(focus_description, files_content)
+        # Generate context ID
+        context_id = _generate_context_id(focus_description, files_content)
 
-    # Cache the context
-    gemini_client.cache_context(context_id, {
-        "files_content": files_content,
-        "project_structure": project_structure,
-        "analysis": analysis
-    })
+        # Cache the context
+        gemini_client.cache_context(context_id, {
+            "files_content": files_content,
+            "project_structure": project_structure,
+            "analysis": analysis
+        })
 
-    # Return formatted context string and ID
-    formatted_context = _format_cached_context({
-        "files_content": files_content,
-        "project_structure": project_structure,
-        "analysis": analysis
-    })
+        # Return formatted context string and ID
+        formatted_context = _format_cached_context({
+            "files_content": files_content,
+            "project_structure": project_structure,
+            "analysis": analysis
+        })
 
-    return formatted_context, context_id
+        return formatted_context, context_id
+
+    except Exception as e:
+        # Log the error (will be visible in MCP server logs)
+        print(f"Warning: Auto-context loading failed: {str(e)}. Proceeding with minimal context.")
+
+        # Return minimal fallback context
+        fallback_context = f"""# Context Loading Failed
+
+**Error:** {str(e)}
+
+**Note:** Proceeding with limited context. The analysis may be less accurate than usual.
+Consider running `analyze_codebase_with_gemini` explicitly if you need detailed context."""
+
+        # Generate error-based context ID
+        fallback_id = f"ctx_error_{hashlib.sha256(str(e).encode()).hexdigest()[:8]}"
+
+        return fallback_context, fallback_id
+
+
+async def _get_or_load_context(
+    context_id: str = None,
+    focus_description: str = "general analysis"
+) -> tuple[str, str]:
+    """
+    Get cached context or auto-load if not available.
+
+    This helper consolidates the duplicated context-loading pattern
+    used across multiple tool functions. It handles:
+    1. Using cached context if context_id is provided and exists
+    2. Auto-loading codebase if no context_id or cache miss
+    3. Returning the context string and ID for use
+
+    Args:
+        context_id: Optional context ID to retrieve from cache
+        focus_description: Focus for auto-loading if needed
+
+    Returns:
+        Tuple of (context_string, context_id)
+    """
+    gemini_client = _get_gemini_client()
+
+    # Try to get cached context first if ID provided
+    if context_id:
+        cached = gemini_client.get_cached_context(context_id)
+        if cached:
+            # Cache hit - return formatted cached context
+            return _format_cached_context(cached), context_id
+        # Cache miss - fall through to auto-load
+        print(f"Warning: Context ID '{context_id}' not found in cache. Auto-loading fresh context.")
+
+    # No context_id or cache miss - auto-load codebase
+    return await _auto_load_context(focus_description)
 
 
 # Specification templates
@@ -413,20 +467,11 @@ async def create_specification_with_gemini(
     try:
         gemini_client = _get_gemini_client()
 
-        # Get or auto-load context
-        context = ""
-        auto_loaded_context_id = None
-
-        if context_id:
-            # Use provided context_id
-            cached = gemini_client.get_cached_context(context_id)
-            if cached:
-                context = _format_cached_context(cached)
-        else:
-            # AUTO-LOAD: No context_id provided, load codebase automatically
-            context, auto_loaded_context_id = await _auto_load_context(
-                focus_description=f"creating specification for: {feature_description}"
-            )
+        # Get or auto-load context (handles cache miss automatically)
+        context, resolved_context_id = await _get_or_load_context(
+            context_id=context_id,
+            focus_description=f"creating specification for: {feature_description}"
+        )
 
         # Get template
         template = SPEC_TEMPLATES.get(spec_template or "standard", SPEC_TEMPLATES["standard"])
@@ -481,7 +526,7 @@ Provide the complete specification in markdown format."""
             "estimated_complexity": _estimate_complexity(spec_content),
             "files_to_modify": files_to_modify,
             "files_to_create": files_to_create,
-            "context_id": context_id or auto_loaded_context_id  # Return for reuse
+            "context_id": resolved_context_id  # Return for reuse in subsequent calls
         }
 
     except Exception as e:
@@ -593,19 +638,11 @@ async def review_code_with_gemini(
     try:
         gemini_client = _get_gemini_client()
 
-        # Get or auto-load codebase context
-        context = ""
-        auto_loaded_context_id = None
-
-        if context_id:
-            cached = gemini_client.get_cached_context(context_id)
-            if cached:
-                context = _format_cached_context(cached)
-        else:
-            # AUTO-LOAD: Load codebase for better review context
-            context, auto_loaded_context_id = await _auto_load_context(
-                focus_description="code review and quality analysis"
-            )
+        # Get or auto-load codebase context (handles cache miss automatically)
+        context, resolved_context_id = await _get_or_load_context(
+            context_id=context_id,
+            focus_description="code review and quality analysis"
+        )
 
         # Parse array parameters
         file_list = files if isinstance(files, list) else None
@@ -697,7 +734,7 @@ Format your response as JSON with this structure:
             "has_blocking_issues": review_data.get("has_blocking_issues", False),
             "summary": review_data.get("summary", ""),
             "recommendations": review_data.get("recommendations", []),
-            "context_id": context_id or auto_loaded_context_id  # Return for reuse
+            "context_id": resolved_context_id  # Return for reuse in subsequent calls
         }
 
     except Exception as e:
@@ -730,19 +767,11 @@ async def generate_documentation_with_gemini(
     try:
         gemini_client = _get_gemini_client()
 
-        # Get or auto-load context
-        context = ""
-        auto_loaded_context_id = None
-
-        if context_id:
-            cached = gemini_client.get_cached_context(context_id)
-            if cached:
-                context = _format_cached_context(cached)
-        else:
-            # AUTO-LOAD: Documentation needs full codebase context
-            context, auto_loaded_context_id = await _auto_load_context(
-                focus_description=f"generating {documentation_type} documentation for: {scope}"
-            )
+        # Get or auto-load context (handles cache miss automatically)
+        context, resolved_context_id = await _get_or_load_context(
+            context_id=context_id,
+            focus_description=f"generating {documentation_type} documentation for: {scope}"
+        )
 
         # Build prompt
         prompt = f"""Generate {documentation_type} documentation for: {scope}
@@ -781,7 +810,7 @@ Provide the complete documentation in markdown format."""
             "doc_content": doc_content,
             "sections": ["overview", "details", "examples"] if include_examples else ["overview", "details"],
             "word_count": len(doc_content.split()),
-            "context_id": context_id or auto_loaded_context_id  # Return for reuse
+            "context_id": resolved_context_id  # Return for reuse in subsequent calls
         }
 
     except Exception as e:
@@ -816,19 +845,11 @@ async def ask_gemini(
         needs_context = include_codebase_context or context_id
 
         if needs_context:
-            context = ""
-            auto_loaded_context_id = None
-
-            if context_id:
-                # Use cached context
-                cached = gemini_client.get_cached_context(context_id)
-                if cached:
-                    context = _format_cached_context(cached)
-            elif include_codebase_context:
-                # AUTO-LOAD: User explicitly wants codebase context
-                context, auto_loaded_context_id = await _auto_load_context(
-                    focus_description=f"answering question: {prompt[:100]}"
-                )
+            # Get or auto-load context (handles cache miss automatically)
+            context, resolved_context_id = await _get_or_load_context(
+                context_id=context_id,
+                focus_description=f"answering question: {prompt[:100]}"
+            )
 
             # Generate with context
             temp = float(temperature) if temperature is not None else 0.7
@@ -842,7 +863,7 @@ async def ask_gemini(
                 "response": response,
                 "context_used": True,
                 "token_count": len(response.split()),
-                "context_id": context_id or auto_loaded_context_id  # Return for reuse
+                "context_id": resolved_context_id  # Return for reuse in subsequent calls
             }
         else:
             # No context needed - simple query

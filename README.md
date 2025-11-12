@@ -169,7 +169,7 @@ spec_result = create_specification_with_gemini({
 # Second call - reuses cached context (faster!)
 review_result = review_code_with_gemini({
   files: ["auth.py", "middleware.py"],
-  context_id: "ctx_abc123"  // Skip reload
+  context_id: "ctx_abc123"  # Skip reload
 })
 
 Result: Fast subsequent calls that share the same codebase understanding!
@@ -340,9 +340,11 @@ Generate detailed technical specification with automatic codebase loading.
   "estimated_complexity": "medium",
   "files_to_modify": ["file1.py"],
   "files_to_create": ["file2.py"],
-  "context_id": "ctx_abc123"  // NEW: Use for subsequent calls
+  "context_id": "ctx_abc123"
 }
 ```
+
+*Note: The `context_id` can be used for subsequent tool calls to skip reloading.*
 
 ### review_code_with_gemini
 
@@ -371,9 +373,11 @@ Comprehensive code review with automatic codebase loading.
   "has_blocking_issues": true,
   "summary": "Review summary",
   "recommendations": ["Add input validation", "Use ORM"],
-  "context_id": "ctx_abc123"  // NEW: Use for subsequent calls
+  "context_id": "ctx_abc123"
 }
 ```
+
+*Note: The `context_id` can be used for subsequent tool calls to skip reloading.*
 
 ### generate_documentation_with_gemini
 
@@ -393,9 +397,11 @@ Generate comprehensive documentation with automatic codebase loading.
   "doc_content": "Full markdown documentation",
   "sections": ["overview", "endpoints", "examples"],
   "word_count": 2500,
-  "context_id": "ctx_abc123"  // NEW: Use for subsequent calls
+  "context_id": "ctx_abc123"
 }
 ```
+
+*Note: The `context_id` can be used for subsequent tool calls to skip reloading.*
 
 ### ask_gemini
 
@@ -413,9 +419,11 @@ General-purpose Gemini query with optional codebase context.
   "response": "Gemini's response",
   "context_used": true,
   "token_count": 150000,
-  "context_id": "ctx_abc123"  // Included when context is used
+  "context_id": "ctx_abc123"
 }
 ```
+
+*Note: `context_id` is included when context is used and can be reused for subsequent calls.*
 
 ## Architecture
 

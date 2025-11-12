@@ -428,3 +428,105 @@ async def test_cli_json_parsing():
                 # Should fallback to returning raw output
                 result = await client.generate_content("test prompt")
                 assert result == "This is not JSON"
+
+
+@pytest.mark.asyncio
+async def test_cache_miss_fallback_in_create_spec(mock_gemini_client, mock_codebase_loader, tmp_path):
+    """Test that create_specification auto-loads when context_id not found in cache."""
+    # Mock cache miss - context_id provided but not in cache
+    mock_gemini_client.get_cached_context = Mock(return_value=None)
+    mock_gemini_client.analyze_with_context = AsyncMock(
+        return_value="# Test Spec\\n\\n## Tasks\\n- Task 1"
+    )
+
+    output_file = tmp_path / "spec.md"
+
+    # Call with context_id that doesn't exist in cache
+    result = await create_specification_with_gemini(
+        feature_description="test feature",
+        context_id="ctx_nonexistent",
+        output_path=str(output_file)
+    )
+
+    # Should have auto-loaded codebase when cache miss occurred
+    assert mock_codebase_loader.load_files.called
+    assert mock_gemini_client.analyze_with_context.called
+
+    # Should return a valid context_id (auto-generated)
+    assert "context_id" in result
+    assert isinstance(result["context_id"], str)
+    assert result["context_id"].startswith("ctx_")
+
+
+@pytest.mark.asyncio
+async def test_cache_miss_fallback_in_review(mock_gemini_client, mock_codebase_loader, tmp_path):
+    """Test that review_code auto-loads when context_id not found in cache."""
+    # Mock cache miss
+    mock_gemini_client.get_cached_context = Mock(return_value=None)
+    mock_gemini_client.analyze_with_context = AsyncMock(
+        return_value='{"issues_found": [], "summary": "Looks good", "has_blocking_issues": false, "recommendations": []}'
+    )
+
+    with patch('hitoshura25_gemini_workflow_bridge.generator._get_git_diff', return_value="diff --git a/test.py"):
+        output_file = tmp_path / "review.md"
+
+        # Call with context_id that doesn't exist in cache
+        result = await review_code_with_gemini(
+            files=None,
+            context_id="ctx_nonexistent",
+            output_path=str(output_file)
+        )
+
+        # Should have auto-loaded codebase when cache miss occurred
+        assert mock_codebase_loader.load_files.called
+        assert mock_gemini_client.analyze_with_context.called
+
+        # Should return a valid context_id
+        assert "context_id" in result
+        assert isinstance(result["context_id"], str)
+
+
+@pytest.mark.asyncio
+async def test_error_handling_in_auto_load(mock_gemini_client, mock_codebase_loader):
+    """Test that _auto_load_context handles errors gracefully."""
+    from hitoshura25_gemini_workflow_bridge.generator import _auto_load_context
+
+    # Mock codebase loader to raise an exception
+    mock_codebase_loader.load_files = Mock(side_effect=Exception("Filesystem error"))
+
+    # Should not raise exception, should return fallback context
+    context, context_id = await _auto_load_context(focus_description="test")
+
+    # Should return fallback context with error info
+    assert isinstance(context, str)
+    assert "Context Loading Failed" in context
+    assert "Filesystem error" in context
+
+    # Should return error context_id
+    assert isinstance(context_id, str)
+    assert context_id.startswith("ctx_error_")
+
+
+@pytest.mark.asyncio
+async def test_spec_creation_with_error_fallback(mock_gemini_client, mock_codebase_loader, tmp_path):
+    """Test that create_specification continues with fallback context on load error."""
+    # Mock codebase loader to raise an exception
+    mock_codebase_loader.load_files = Mock(side_effect=Exception("Disk full"))
+
+    # Mock Gemini to still respond (with fallback context)
+    mock_gemini_client.analyze_with_context = AsyncMock(
+        return_value="# Spec\\n\\n## Tasks\\n- Task 1"
+    )
+
+    output_file = tmp_path / "spec.md"
+
+    # Should not raise exception, should continue with fallback context
+    result = await create_specification_with_gemini(
+        feature_description="test feature",
+        output_path=str(output_file)
+    )
+
+    # Should still return valid result
+    assert "spec_path" in result
+    assert "context_id" in result
+    assert result["context_id"].startswith("ctx_error_")
