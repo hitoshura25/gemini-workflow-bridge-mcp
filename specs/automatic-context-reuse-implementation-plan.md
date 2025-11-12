@@ -2,7 +2,6 @@
 
 **Date**: 2025-01-12
 **Status**: Planning
-**Version**: 2.0.0 (Breaking Change)
 
 ## Overview
 
@@ -787,7 +786,7 @@ DEFAULT_CONTEXT_DIR=./.workflow-context
 
 ### Migration Steps
 
-**Before (v1.x):**
+**Before**
 ```python
 # Manual context management
 analysis = analyze_codebase_with_gemini({
@@ -806,7 +805,7 @@ review = review_code_with_gemini({
 })
 ```
 
-**After (v2.0):**
+**After**
 ```python
 # Automatic context management
 create_specification_with_gemini({
@@ -827,7 +826,7 @@ analyze_codebase_with_gemini({
 
 ## Rollout Plan
 
-1. **Version Bump**: 1.x.x → 2.0.0 (breaking change)
+1. **Version Bump**: Breaking change
 2. **CHANGELOG**: Document breaking changes
 3. **Release Notes**: Highlight automatic context reuse feature
 4. **Migration Guide**: Add to README
@@ -845,13 +844,13 @@ analyze_codebase_with_gemini({
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Breaking change for existing users | High | Version 2.0.0, clear migration guide, CHANGELOG |
+| Breaking change for existing users | High | clear migration guide, CHANGELOG |
 | TTL too short = frequent reloads | Medium | Default 30 min, configurable via env |
 | TTL too long = stale context | Medium | Can call `analyze_codebase_with_gemini` to force refresh |
 | Memory usage with long-lived contexts | Low | Implement max cache size limit (future) |
 | Server restart loses context | Low | Expected behavior, context reloads on first call |
 
-## Future Enhancements (Post-2.0)
+## Future Enhancements
 
 1. **File System Watching**: Auto-detect file changes and invalidate context
 2. **Persistent Cache**: Save context to disk for cross-session reuse
@@ -871,7 +870,7 @@ analyze_codebase_with_gemini({
 
 ## Approval Required
 
-- [ ] User approves breaking change (v2.0.0)
+- [ ] User approves breaking change
 - [ ] User approves default TTL of 30 minutes
 - [ ] User approves removal of `context_id` from all tool returns
 - [ ] Ready to proceed with implementation

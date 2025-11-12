@@ -97,7 +97,7 @@ GEMINI_MODEL=auto
 # GEMINI_MODEL=gemini-2.0-flash
 # GEMINI_MODEL=gemini-1.5-pro
 
-# Context Cache TTL (NEW in v2.0.0)
+# Context Cache TTL
 # How long to cache codebase context before reloading (in minutes)
 # Default: 30 minutes
 CONTEXT_CACHE_TTL_MINUTES=30
@@ -142,8 +142,6 @@ Add the server to your Claude Code MCP configuration (`~/.claude/config.json` or
 ## Usage Examples
 
 ### How It Works: Automatic Context Reuse
-
-**NEW in v2.0.0**: All tools now automatically manage codebase context with session-level caching! No manual context ID tracking needed.
 
 **Key Features:**
 - ✅ **Automatic Context Loading**: First tool call automatically loads and analyzes your codebase
@@ -321,8 +319,6 @@ Analyze codebase using Gemini's 2M token context window.
 
 Generate detailed technical specification with automatic codebase context.
 
-**NEW in v2.0.0**: Automatically loads and caches codebase context, or reuses recently cached context (within TTL).
-
 **Parameters:**
 - `feature_description` (string, required): What feature to specify
 - `spec_template` (string, optional): Template to use ("standard", "minimal", "comprehensive")
@@ -345,8 +341,6 @@ Generate detailed technical specification with automatic codebase context.
 ### review_code_with_gemini
 
 Comprehensive code review with automatic codebase context.
-
-**NEW in v2.0.0**: Automatically loads and caches codebase context, or reuses recently cached context (within TTL).
 
 **Parameters:**
 - `files` (array, optional): Files to review (default: git diff)
@@ -379,8 +373,6 @@ Comprehensive code review with automatic codebase context.
 
 Generate comprehensive documentation with automatic codebase context.
 
-**NEW in v2.0.0**: Automatically loads and caches codebase context, or reuses recently cached context (within TTL).
-
 **Parameters:**
 - `documentation_type` (string, required): Type ("api", "architecture", "user-guide", "readme", "contributing")
 - `scope` (string, required): What to document
@@ -402,8 +394,6 @@ Generate comprehensive documentation with automatic codebase context.
 ### ask_gemini
 
 General-purpose Gemini query with optional codebase context.
-
-**NEW in v2.0.0**: Automatically reuses cached context when `include_codebase_context=true` (within TTL).
 
 **Parameters:**
 - `prompt` (string, required): Question or task
