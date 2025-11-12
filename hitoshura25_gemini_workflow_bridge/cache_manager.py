@@ -181,7 +181,19 @@ class ContextCacheManager:
         }
 
     def clear(self) -> None:
-        """Clear all cached contexts."""
+        """Clear all cached contexts, preserving statistics.
+
+        Use this for cache maintenance while keeping session statistics
+        for monitoring and debugging purposes.
+        """
         self.cache.clear()
         self.current_context_id = None
+        # Stats intentionally NOT reset - use reset() to clear stats
+
+    def reset(self) -> None:
+        """Reset cache and all statistics.
+
+        Use this for complete cleanup including session statistics.
+        """
+        self.clear()
         self.stats = {"hits": 0, "misses": 0, "expirations": 0}

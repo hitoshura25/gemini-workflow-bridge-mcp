@@ -302,7 +302,7 @@ async def _get_or_load_context(
         return _format_cached_context(context_data), context_id
 
     # No current context or expired - auto-load
-    print(f"[INFO] Loading fresh codebase context (TTL: {gemini_client.cache_manager.ttl_minutes} minutes)...")
+    print(f"[INFO] Loading fresh codebase context (TTL: {gemini_client.cache_manager.ttl_minutes}min)...")
     return await _auto_load_context(focus_description)
 
 

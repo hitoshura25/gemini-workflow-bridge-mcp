@@ -246,7 +246,7 @@ def test_cache_stats_with_expiration():
 
 
 def test_clear_cache():
-    """Test clearing all cached contexts."""
+    """Test clearing cached contexts preserves statistics."""
     cache = ContextCacheManager()
 
     # Cache multiple contexts
@@ -264,10 +264,39 @@ def test_clear_cache():
     # Clear cache
     cache.clear()
 
+    # Cache cleared but stats preserved
+    assert len(cache.cache) == 0
+    assert cache.current_context_id is None
+    assert cache.stats["hits"] == 1      # Stats preserved!
+    assert cache.stats["misses"] == 1    # Stats preserved!
+
+
+def test_reset_cache():
+    """Test resetting cache and all statistics."""
+    cache = ContextCacheManager()
+
+    # Cache multiple contexts
+    cache.cache_context("ctx_1", {"data": "1"})
+    cache.cache_context("ctx_2", {"data": "2"})
+
+    # Access some contexts to generate stats
+    cache.get_cached_context("ctx_1")
+    cache.get_cached_context("ctx_nonexistent")
+
+    assert len(cache.cache) == 2
+    assert cache.current_context_id is not None
+    assert cache.stats["hits"] == 1
+    assert cache.stats["misses"] == 1
+
+    # Reset everything
+    cache.reset()
+
+    # Everything reset
     assert len(cache.cache) == 0
     assert cache.current_context_id is None
     assert cache.stats["hits"] == 0
     assert cache.stats["misses"] == 0
+    assert cache.stats["expirations"] == 0
 
 
 def test_multiple_context_switching():
