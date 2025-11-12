@@ -68,7 +68,6 @@ async def test_create_specification_with_gemini_function(mock_create_spec):
     # Test the function directly
     result = await create_specification_with_gemini(
         feature_description="test_value",
-        context_id="test_value",
         spec_template="test_value",
         output_path="test_value"
     )
@@ -138,7 +137,6 @@ async def test_ask_gemini_function(mock_ask):
     result = await ask_gemini(
         prompt="test_value",
         include_codebase_context=True,
-        context_id="test_value",
         temperature=42
     )
 

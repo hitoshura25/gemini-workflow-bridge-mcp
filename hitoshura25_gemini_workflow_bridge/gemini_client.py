@@ -1,9 +1,12 @@
 """Gemini CLI client wrapper using subprocess"""
 import json
+import os
 import shutil
 import asyncio
 import subprocess
 from typing import Optional, Dict, Any
+
+from .cache_manager import ContextCacheManager
 
 
 class GeminiClient:
@@ -41,7 +44,10 @@ class GeminiClient:
 
         self.model_name = model
         self.cli_path = cli_path
-        self.context_cache: Dict[str, Any] = {}
+
+        # Initialize cache manager with configurable TTL
+        ttl_minutes = int(os.getenv("CONTEXT_CACHE_TTL_MINUTES", "30"))
+        self.cache_manager = ContextCacheManager(ttl_minutes=ttl_minutes)
 
     async def generate_content(
         self,
@@ -129,9 +135,41 @@ Please provide a detailed, structured response."""
         return await self.generate_content(full_prompt, temperature)
 
     def cache_context(self, context_id: str, context: Dict[str, Any]) -> None:
-        """Cache context for reuse"""
-        self.context_cache[context_id] = context
+        """Cache context for reuse (automatically sets as current context).
+
+        Args:
+            context_id: Unique identifier for context
+            context: Context data to cache
+        """
+        self.cache_manager.cache_context(
+            context_id,
+            context,
+            set_as_current=True  # Always set as current context
+        )
 
     def get_cached_context(self, context_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve cached context"""
-        return self.context_cache.get(context_id)
+        """Retrieve cached context (checks TTL expiration).
+
+        Args:
+            context_id: Context ID to retrieve
+
+        Returns:
+            Context data or None if not found/expired
+        """
+        return self.cache_manager.get_cached_context(context_id)
+
+    def get_current_context(self) -> Optional[tuple[Dict[str, Any], str]]:
+        """Get the current active context.
+
+        Returns:
+            Tuple of (context_data, context_id) or None if no current context/expired
+        """
+        return self.cache_manager.get_current_context()
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache statistics.
+
+        Returns:
+            Dictionary with cache statistics including hit rate
+        """
+        return self.cache_manager.get_stats()

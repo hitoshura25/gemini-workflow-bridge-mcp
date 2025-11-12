@@ -270,37 +270,38 @@ Consider running `analyze_codebase_with_gemini` explicitly if you need detailed 
 
 
 async def _get_or_load_context(
-    context_id: str = None,
     focus_description: str = "general analysis"
 ) -> tuple[str, str]:
     """
-    Get cached context or auto-load if not available.
+    Get current context or auto-load if expired/missing.
 
-    This helper consolidates the duplicated context-loading pattern
-    used across multiple tool functions. It handles:
-    1. Using cached context if context_id is provided and exists
-    2. Auto-loading codebase if no context_id or cache miss
-    3. Returning the context string and ID for use
+    This function automatically:
+    1. Checks for current cached context
+    2. Validates TTL expiration
+    3. Auto-loads fresh context if needed
+
+    No manual context ID management required! The cache manager automatically
+    tracks the "current" context and reuses it across tool calls within the
+    session (default TTL: 30 minutes).
 
     Args:
-        context_id: Optional context ID to retrieve from cache
-        focus_description: Focus for auto-loading if needed
+        focus_description: Focus for analysis if reloading context
 
     Returns:
         Tuple of (context_string, context_id)
     """
     gemini_client = _get_gemini_client()
 
-    # Try to get cached context first if ID provided
-    if context_id:
-        cached = gemini_client.get_cached_context(context_id)
-        if cached:
-            # Cache hit - return formatted cached context
-            return _format_cached_context(cached), context_id
-        # Cache miss - fall through to auto-load
-        print(f"Warning: Context ID '{context_id}' not found in cache. Auto-loading fresh context.")
+    # Try to get current context (automatically checks TTL)
+    current = gemini_client.get_current_context()
 
-    # No context_id or cache miss - auto-load codebase
+    if current:
+        context_data, context_id = current
+        print(f"ℹ️  Reusing cached context (ID: {context_id[:12]}..., TTL: {gemini_client.cache_manager.ttl_minutes}min)")
+        return _format_cached_context(context_data), context_id
+
+    # No current context or expired - auto-load
+    print(f"ℹ️  Loading fresh codebase context (TTL: {gemini_client.cache_manager.ttl_minutes} minutes)...")
     return await _auto_load_context(focus_description)
 
 
@@ -448,28 +449,29 @@ def _format_cached_context(cached: Dict[str, Any]) -> str:
 
 async def create_specification_with_gemini(
     feature_description: str,
-    context_id: str = None,
     spec_template: str = None,
     output_path: str = None
 ) -> Dict[str, Any]:
     """
-    Generate detailed technical specification using full codebase context
+    Generate detailed technical specification using full codebase context.
+
+    This tool automatically loads and analyzes your codebase (or reuses
+    recently cached context within the session). No manual context management
+    required! Context is cached for 30 minutes by default (configurable).
 
     Args:
         feature_description: What feature to specify
-        context_id: Optional context ID from previous analysis
         spec_template: Specification template to use
         output_path: Where to save the spec
 
     Returns:
-        Result dictionary with specification
+        Result dictionary with specification (no context_id needed)
     """
     try:
         gemini_client = _get_gemini_client()
 
-        # Get or auto-load context (handles cache miss automatically)
-        context, resolved_context_id = await _get_or_load_context(
-            context_id=context_id,
+        # Get or auto-load context (automatically reuses current context!)
+        context, _ = await _get_or_load_context(
             focus_description=f"creating specification for: {feature_description}"
         )
 
@@ -525,8 +527,7 @@ Provide the complete specification in markdown format."""
             "implementation_tasks": tasks,
             "estimated_complexity": _estimate_complexity(spec_content),
             "files_to_modify": files_to_modify,
-            "files_to_create": files_to_create,
-            "context_id": resolved_context_id  # Return for reuse in subsequent calls
+            "files_to_create": files_to_create
         }
 
     except Exception as e:
@@ -619,28 +620,29 @@ async def review_code_with_gemini(
     files: Any = None,
     review_focus: Any = None,
     spec_path: str = None,
-    output_path: str = None,
-    context_id: str = None
+    output_path: str = None
 ) -> Dict[str, Any]:
     """
-    Comprehensive code review using Gemini
+    Comprehensive code review using Gemini.
+
+    This tool automatically loads and analyzes your codebase (or reuses
+    recently cached context within the session). It reviews git changes
+    by default, or specific files if provided.
 
     Args:
-        files: Files to review
-        review_focus: Areas to focus on
+        files: Files to review (defaults to git diff if not provided)
+        review_focus: Areas to focus on (e.g., security, performance)
         spec_path: Path to spec to review against
         output_path: Where to save review
-        context_id: Optional context ID from previous analysis
 
     Returns:
-        Result dictionary with review
+        Result dictionary with review (no context_id needed)
     """
     try:
         gemini_client = _get_gemini_client()
 
-        # Get or auto-load codebase context (handles cache miss automatically)
-        context, resolved_context_id = await _get_or_load_context(
-            context_id=context_id,
+        # Get or auto-load codebase context (automatically reuses current context!)
+        context, _ = await _get_or_load_context(
             focus_description="code review and quality analysis"
         )
 
@@ -733,8 +735,7 @@ Format your response as JSON with this structure:
             "issues_found": review_data.get("issues_found", []),
             "has_blocking_issues": review_data.get("has_blocking_issues", False),
             "summary": review_data.get("summary", ""),
-            "recommendations": review_data.get("recommendations", []),
-            "context_id": resolved_context_id  # Return for reuse in subsequent calls
+            "recommendations": review_data.get("recommendations", [])
         }
 
     except Exception as e:
@@ -748,28 +749,29 @@ async def generate_documentation_with_gemini(
     documentation_type: str,
     scope: str,
     output_path: str = None,
-    include_examples: bool = None,
-    context_id: str = None
+    include_examples: bool = None
 ) -> Dict[str, Any]:
     """
-    Generate comprehensive documentation with full codebase context
+    Generate comprehensive documentation with full codebase context.
+
+    This tool automatically loads and analyzes your codebase (or reuses
+    recently cached context within the session) to generate context-aware
+    documentation with examples from your actual code.
 
     Args:
-        documentation_type: Type of documentation
-        scope: What to document
+        documentation_type: Type of documentation (api, architecture, user-guide, etc.)
+        scope: What to document (e.g., "authentication system", "REST API")
         output_path: Where to save documentation
-        include_examples: Include code examples
-        context_id: Optional context ID from previous analysis
+        include_examples: Include code examples from the codebase
 
     Returns:
-        Result dictionary with documentation
+        Result dictionary with documentation (no context_id needed)
     """
     try:
         gemini_client = _get_gemini_client()
 
-        # Get or auto-load context (handles cache miss automatically)
-        context, resolved_context_id = await _get_or_load_context(
-            context_id=context_id,
+        # Get or auto-load context (automatically reuses current context!)
+        context, _ = await _get_or_load_context(
             focus_description=f"generating {documentation_type} documentation for: {scope}"
         )
 
@@ -809,8 +811,7 @@ Provide the complete documentation in markdown format."""
             "doc_path": str(output_path),
             "doc_content": doc_content,
             "sections": ["overview", "details", "examples"] if include_examples else ["overview", "details"],
-            "word_count": len(doc_content.split()),
-            "context_id": resolved_context_id  # Return for reuse in subsequent calls
+            "word_count": len(doc_content.split())
         }
 
     except Exception as e:
@@ -823,31 +824,29 @@ Provide the complete documentation in markdown format."""
 async def ask_gemini(
     prompt: str,
     include_codebase_context: bool = None,
-    context_id: str = None,
     temperature: float = None
 ) -> Dict[str, Any]:
     """
-    General-purpose Gemini query with optional codebase context
+    General-purpose Gemini query with optional codebase context.
+
+    By default, queries are answered without codebase context. Set
+    include_codebase_context=True to automatically load and use your
+    codebase (or reuse recently cached context).
 
     Args:
         prompt: Question or task for Gemini
-        include_codebase_context: Load full codebase context
-        context_id: Reuse cached context
-        temperature: Temperature for generation
+        include_codebase_context: Load full codebase context (default: False)
+        temperature: Temperature for generation 0.0-1.0 (default: 0.7)
 
     Returns:
-        Result dictionary with response
+        Result dictionary with response (no context_id needed)
     """
     try:
         gemini_client = _get_gemini_client()
 
-        # Determine if context is needed
-        needs_context = include_codebase_context or context_id
-
-        if needs_context:
-            # Get or auto-load context (handles cache miss automatically)
-            context, resolved_context_id = await _get_or_load_context(
-                context_id=context_id,
+        if include_codebase_context:
+            # Get or auto-load context (automatically reuses current context!)
+            context, _ = await _get_or_load_context(
                 focus_description=f"answering question: {prompt[:100]}"
             )
 
@@ -862,8 +861,7 @@ async def ask_gemini(
             return {
                 "response": response,
                 "context_used": True,
-                "token_count": len(response.split()),
-                "context_id": resolved_context_id  # Return for reuse in subsequent calls
+                "token_count": len(response.split())
             }
         else:
             # No context needed - simple query

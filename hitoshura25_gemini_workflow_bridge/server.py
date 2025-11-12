@@ -67,8 +67,6 @@ async def create_specification_with_gemini(
 
     feature_description: str,
 
-    context_id: str = None,
-
     spec_template: str = None,
 
     output_path: str = None
@@ -76,17 +74,13 @@ async def create_specification_with_gemini(
 ) -> str:
     """Generate detailed technical specification using full codebase context
 
-    This tool automatically loads and analyzes your codebase to generate
-    context-aware specifications. You can call it directly without any
-    prior setup.
+    This tool automatically loads and analyzes your codebase (or reuses
+    recently cached context within the session). No manual context management
+    required! Context is cached for 30 minutes by default (configurable).
 
     Args:
 
         feature_description: What feature to specify
-
-        context_id: Optional context ID from previous analysis.
-                    If not provided, automatically loads codebase.
-                    Provide this to reuse context from previous calls (faster).
 
         spec_template: Specification template to use (standard/minimal)
 
@@ -96,14 +90,11 @@ async def create_specification_with_gemini(
 
     Returns:
         JSON string containing spec_path, spec_content, implementation_tasks,
-        estimated_complexity, files_to_modify, files_to_create, and context_id
-        (use context_id for subsequent tool calls to skip reloading)
+        estimated_complexity, files_to_modify, and files_to_create
     """
     result = await generator.create_specification_with_gemini(
 
         feature_description=feature_description,
-
-        context_id=context_id,
 
         spec_template=spec_template,
 
@@ -122,16 +113,15 @@ async def review_code_with_gemini(
 
     spec_path: str = None,
 
-    output_path: str = None,
-
-    context_id: str = None
+    output_path: str = None
 
 ) -> str:
     """Comprehensive code review using Gemini
 
-    This tool automatically loads and analyzes your codebase to provide
-    context-aware code reviews. It reviews git changes by default, or
-    specific files if provided.
+    This tool automatically loads and analyzes your codebase (or reuses
+    recently cached context within the session) to provide context-aware
+    code reviews. It reviews git changes by default, or specific files
+    if provided.
 
     Args:
 
@@ -143,16 +133,11 @@ async def review_code_with_gemini(
 
         output_path: Where to save review
 
-        context_id: Optional context ID from previous analysis.
-                    If not provided, automatically loads codebase.
-                    Provide this to reuse context from previous calls (faster).
-
 
 
     Returns:
         JSON string containing review_path, review_content, issues_found,
-        has_blocking_issues, summary, recommendations, and context_id
-        (use context_id for subsequent tool calls to skip reloading)
+        has_blocking_issues, summary, and recommendations
     """
     result = await generator.review_code_with_gemini(
 
@@ -162,9 +147,7 @@ async def review_code_with_gemini(
 
         spec_path=spec_path,
 
-        output_path=output_path,
-
-        context_id=context_id
+        output_path=output_path
 
     )
     return str(result)
@@ -179,15 +162,14 @@ async def generate_documentation_with_gemini(
 
     output_path: str = None,
 
-    include_examples: bool = None,
-
-    context_id: str = None
+    include_examples: bool = None
 
 ) -> str:
     """Generate comprehensive documentation with full codebase context
 
-    This tool automatically loads and analyzes your codebase to generate
-    context-aware documentation with examples from your actual code.
+    This tool automatically loads and analyzes your codebase (or reuses
+    recently cached context within the session) to generate context-aware
+    documentation with examples from your actual code.
 
     Args:
 
@@ -199,15 +181,10 @@ async def generate_documentation_with_gemini(
 
         include_examples: Include code examples from the codebase
 
-        context_id: Optional context ID from previous analysis.
-                    If not provided, automatically loads codebase.
-                    Provide this to reuse context from previous calls (faster).
-
 
 
     Returns:
-        JSON string containing doc_path, doc_content, sections, word_count,
-        and context_id (use context_id for subsequent tool calls to skip reloading)
+        JSON string containing doc_path, doc_content, sections, and word_count
     """
     result = await generator.generate_documentation_with_gemini(
 
@@ -217,9 +194,7 @@ async def generate_documentation_with_gemini(
 
         output_path=output_path,
 
-        include_examples=include_examples,
-
-        context_id=context_id
+        include_examples=include_examples
 
     )
     return str(result)
@@ -232,36 +207,33 @@ async def ask_gemini(
 
     include_codebase_context: bool = None,
 
-    context_id: str = None,
-
     temperature: float = None
 
 ) -> str:
     """General-purpose Gemini query with optional codebase context
 
+    By default, queries are answered without codebase context. Set
+    include_codebase_context=True to automatically load and use your
+    codebase (or reuse recently cached context).
 
     Args:
-        
+
         prompt: Question or task for Gemini
-        
-        include_codebase_context: Load full codebase context
-        
-        context_id: Reuse cached context
-        
-        temperature: Temperature for generation
-        
+
+        include_codebase_context: Load full codebase context (default: False)
+
+        temperature: Temperature for generation 0.0-1.0 (default: 0.7)
+
 
 
     Returns:
-        Result from ask_gemini
+        JSON string containing response, context_used, and token_count
     """
     result = await generator.ask_gemini(
 
         prompt=prompt,
 
         include_codebase_context=include_codebase_context,
-
-        context_id=context_id,
 
         temperature=temperature
 
