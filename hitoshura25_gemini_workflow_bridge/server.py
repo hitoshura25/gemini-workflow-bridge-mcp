@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
 """
-MCP Server for hitoshura25-gemini-workflow-bridge.
+MCP Server for hitoshura25-gemini-workflow-bridge v2.0.
 
-MCP server that bridges Claude Code to Gemini CLI for workflow tasks like codebase analysis, specification creation, and code review
+MCP server that bridges Claude Code to Gemini CLI for context compression and factual code analysis.
+
+Version 2.0 Changes:
+- Gemini now acts as a "context compression engine" (fact extraction only)
+- Claude handles all reasoning, planning, and specification creation
+- New tools for querying, tracing, validating, and workflow generation
 """
 
 from mcp.server.fastmcp import FastMCP
+from typing import List
 
 from . import generator
 from .resources import WorkflowResources
+from .tools import (
+    query_codebase,
+    find_code_by_intent,
+    trace_feature,
+    list_error_patterns,
+    validate_against_codebase,
+    check_consistency,
+    generate_feature_workflow,
+    generate_slash_command
+)
 
 # Initialize FastMCP server
 mcp = FastMCP("hitoshura25_gemini_workflow_bridge")
@@ -17,185 +33,406 @@ mcp = FastMCP("hitoshura25_gemini_workflow_bridge")
 workflow_resources = WorkflowResources()
 
 
+# ============================================================================
+# Tier 1: Fact Extraction Tools (NEW in v2.0)
+# ============================================================================
+
+@mcp.tool()
+async def query_codebase_tool(
+    questions: List[str],
+    scope: str = None,
+    include_patterns: List[str] = None,
+    exclude_patterns: List[str] = None,
+    max_tokens_per_answer: int = 300
+) -> str:
+    """Multi-question factual analysis with massive context compression
+
+    This tool uses Gemini to analyze codebases and extract factual information.
+    It compresses large codebases (50K+ tokens) into small summaries (300 tokens
+    per answer) for Claude to use in planning.
+
+    Args:
+        questions: List of 1-10 specific questions to answer
+        scope: Directory to analyze (default: current directory)
+        include_patterns: File patterns to include
+        exclude_patterns: Patterns to exclude
+        max_tokens_per_answer: Target token budget per answer (default: 300)
+
+    Returns:
+        JSON string with answers array and compression metadata
+    """
+    result = await query_codebase(
+        questions=questions,
+        scope=scope,
+        include_patterns=include_patterns,
+        exclude_patterns=exclude_patterns,
+        max_tokens_per_answer=max_tokens_per_answer
+    )
+    return str(result)
+
+
+@mcp.tool()
+async def find_code_by_intent_tool(
+    intent: str,
+    return_format: str = "summary_with_references",
+    max_files: int = 10,
+    scope: str = None
+) -> str:
+    """Semantic search that returns summaries with references (filtering at the edge)
+
+    Find code by natural language intent and return compressed summaries instead
+    of full code, demonstrating "filtering at the edge".
+
+    Args:
+        intent: Natural language description of what to find
+        return_format: "summary_with_references" or "detailed_with_snippets"
+        max_files: Limit number of files to return (default: 10)
+        scope: Directory to search in
+
+    Returns:
+        JSON string with summary, primary files, patterns, dependencies
+    """
+    result = await find_code_by_intent(
+        intent=intent,
+        return_format=return_format,
+        max_files=max_files,
+        scope=scope
+    )
+    return str(result)
+
+
+@mcp.tool()
+async def trace_feature_tool(
+    feature: str,
+    entry_point: str = None,
+    max_depth: int = 10,
+    include_data_flow: bool = False
+) -> str:
+    """Follow a feature's execution path through the codebase
+
+    Trace how a feature is implemented across multiple files, showing the flow
+    of execution and data transformations.
+
+    Args:
+        feature: Feature to trace (e.g., "user authentication")
+        entry_point: Starting point like a route or function
+        max_depth: How deep to trace (default: 10)
+        include_data_flow: Include data transformations
+
+    Returns:
+        JSON string with flow steps, dependencies, DB operations, external calls
+    """
+    result = await trace_feature(
+        feature=feature,
+        entry_point=entry_point,
+        max_depth=max_depth,
+        include_data_flow=include_data_flow
+    )
+    return str(result)
+
+
+@mcp.tool()
+async def list_error_patterns_tool(
+    pattern_type: str,
+    directory: str = ".",
+    group_by: str = "pattern"
+) -> str:
+    """Extract and categorize patterns across codebase (filtering at the edge)
+
+    Analyze large codebases and extract pattern information, returning only
+    compressed summaries instead of full code.
+
+    Args:
+        pattern_type: "error_handling", "logging", "async_patterns", "database_queries"
+        directory: Directory to analyze
+        group_by: "file", "pattern", or "severity"
+
+    Returns:
+        JSON string with patterns found, inconsistencies, and summary
+    """
+    result = await list_error_patterns(
+        pattern_type=pattern_type,
+        directory=directory,
+        group_by=group_by
+    )
+    return str(result)
+
+
+# ============================================================================
+# Tier 2: Validation Tools (NEW in v2.0)
+# ============================================================================
+
+@mcp.tool()
+async def validate_against_codebase_tool(
+    spec_content: str,
+    validation_checks: List[str],
+    codebase_context: str = None
+) -> str:
+    """Validate specification for completeness and accuracy
+
+    After Claude creates a spec, this validates it using Gemini to ensure
+    completeness, accuracy, and alignment with existing patterns.
+
+    Args:
+        spec_content: Markdown specification content
+        validation_checks: List of checks (e.g., ["missing_files", "undefined_dependencies"])
+        codebase_context: Optional pre-loaded context
+
+    Returns:
+        JSON string with validation result, completeness score, issues, suggestions
+    """
+    result = await validate_against_codebase(
+        spec_content=spec_content,
+        validation_checks=validation_checks,
+        codebase_context=codebase_context
+    )
+    return str(result)
+
+
+@mcp.tool()
+async def check_consistency_tool(
+    focus: str,
+    new_code_or_spec: str,
+    scope: str = None
+) -> str:
+    """Verify new code or spec follows existing codebase patterns
+
+    Check whether new code or specifications align with existing patterns,
+    conventions, and practices in the codebase.
+
+    Args:
+        focus: "naming_conventions", "error_handling", "testing", "api_design", "all"
+        new_code_or_spec: Code or spec to check
+        scope: Which part of codebase to compare against
+
+    Returns:
+        JSON string with consistency score, matches, violations, recommendations
+    """
+    result = await check_consistency(
+        focus=focus,
+        new_code_or_spec=new_code_or_spec,
+        scope=scope
+    )
+    return str(result)
+
+
+# ============================================================================
+# Tier 3: Workflow Automation Tools (NEW in v2.0)
+# ============================================================================
+
+@mcp.tool()
+async def generate_feature_workflow_tool(
+    feature_description: str,
+    workflow_style: str = "interactive",
+    save_to: str = None,
+    include_validation_steps: bool = True
+) -> str:
+    """Generate complete, executable workflow for a feature (progressive disclosure)
+
+    Generate a markdown workflow file that Claude can follow step-by-step,
+    implementing progressive disclosure.
+
+    Args:
+        feature_description: Description of the feature to implement
+        workflow_style: "interactive", "automated", or "template"
+        save_to: Path to save workflow file
+        include_validation_steps: Include validation steps
+
+    Returns:
+        JSON string with workflow_path, content, estimated_steps, tools_required
+    """
+    result = await generate_feature_workflow(
+        feature_description=feature_description,
+        workflow_style=workflow_style,
+        save_to=save_to,
+        include_validation_steps=include_validation_steps
+    )
+    return str(result)
+
+
+@mcp.tool()
+async def generate_slash_command_tool(
+    command_name: str,
+    workflow_type: str,
+    description: str,
+    steps: List[str] = None,
+    save_to: str = None
+) -> str:
+    """Auto-generate Claude Code slash commands for common workflows
+
+    Create custom slash commands that users can invoke in Claude Code to
+    automate complete workflows.
+
+    Args:
+        command_name: Name of the command (e.g., "add-feature")
+        workflow_type: "feature", "refactor", "debug", "review", "custom"
+        description: Description of what the command does
+        steps: Custom steps if workflow_type="custom"
+        save_to: Where to save command file
+
+    Returns:
+        JSON string with command_path, command_content, usage_example
+    """
+    result = await generate_slash_command(
+        command_name=command_name,
+        workflow_type=workflow_type,
+        description=description,
+        steps=steps,
+        save_to=save_to
+    )
+    return str(result)
+
+
+# ============================================================================
+# Legacy Tools (DEPRECATED - Maintained for backward compatibility)
+# ============================================================================
 
 @mcp.tool()
 async def analyze_codebase_with_gemini(
-
     focus_description: str,
-
     directories: str = None,
-
     file_patterns: str = None,
-
     exclude_patterns: str = None
-
 ) -> str:
-    """Analyze codebase using Gemini's 2M token context window
+    """[UPDATED v2.0] Analyze codebase using Gemini - now returns FACTS only
 
+    Version 2.0 Update: This tool now uses the fact extraction system prompt
+    to return only factual information, not opinions or suggestions.
+
+    Consider using query_codebase_tool() for multi-question analysis with
+    better token compression.
 
     Args:
-
         focus_description: What to focus on in the analysis
-
         directories: Directories to analyze
-
         file_patterns: File patterns to include
-
         exclude_patterns: Patterns to exclude
 
-
-
     Returns:
-        Result from analyze_codebase_with_gemini
+        JSON string with factual analysis (no opinions or suggestions)
     """
     result = await generator.analyze_codebase_with_gemini(
-
         focus_description=focus_description,
-
         directories=directories,
-
         file_patterns=file_patterns,
-
         exclude_patterns=exclude_patterns
-
     )
     return str(result)
 
 
 @mcp.tool()
 async def create_specification_with_gemini(
-
     feature_description: str,
-
     spec_template: str = None,
-
     output_path: str = None
-
 ) -> str:
-    """Generate detailed technical specification using full codebase context
+    """[DEPRECATED v2.0] Generate specifications - Claude should do this instead
 
-    This tool automatically loads and analyzes your codebase (or reuses
-    recently cached context within the session). No manual context management
-    required! Context is cached for 30 minutes by default (configurable).
+    ⚠️ DEPRECATED: This tool is deprecated in v2.0. The new design has:
+    - Gemini extracts facts using query_codebase_tool()
+    - Claude creates specifications using those facts
+    - Claude validates with validate_against_codebase_tool()
+
+    This approach produces A-grade specs vs B-grade with this tool.
+
+    Migration:
+    1. Use query_codebase_tool(questions=[...]) to get facts
+    2. Create spec yourself using superior reasoning
+    3. Validate with validate_against_codebase_tool(spec=...)
+
+    This tool is maintained for backward compatibility only.
 
     Args:
-
         feature_description: What feature to specify
-
-        spec_template: Specification template to use (standard/minimal)
-
+        spec_template: Specification template to use
         output_path: Where to save the spec
 
-
-
     Returns:
-        JSON string containing spec_path, spec_content, implementation_tasks,
-        estimated_complexity, files_to_modify, and files_to_create
+        JSON string with spec (B-grade quality)
     """
     result = await generator.create_specification_with_gemini(
-
         feature_description=feature_description,
-
         spec_template=spec_template,
-
         output_path=output_path
-
     )
+    # Add deprecation warning to result
+    if isinstance(result, dict):
+        result["_deprecation_warning"] = (
+            "This tool is deprecated in v2.0. Use query_codebase_tool() + "
+            "your own specification creation + validate_against_codebase_tool() "
+            "for A-grade results."
+        )
     return str(result)
 
 
 @mcp.tool()
 async def review_code_with_gemini(
-
     files: str = None,
-
     review_focus: str = None,
-
     spec_path: str = None,
-
     output_path: str = None
-
 ) -> str:
-    """Comprehensive code review using Gemini
+    """[DEPRECATED v2.0] Code review - Consider using new fact extraction tools
 
-    This tool automatically loads and analyzes your codebase (or reuses
-    recently cached context within the session) to provide context-aware
-    code reviews. It reviews git changes by default, or specific files
-    if provided.
+    ⚠️ DEPRECATED: While this tool still works, the new v2.0 approach is better:
+    - Use query_codebase_tool() to gather facts about code patterns
+    - Use list_error_patterns_tool() to identify inconsistencies
+    - Use check_consistency_tool() to validate against patterns
+    - Let Claude perform the actual review with better reasoning
+
+    This tool is maintained for backward compatibility only.
 
     Args:
-
-        files: Files to review (defaults to git diff if not provided)
-
-        review_focus: Areas to focus on (e.g., security, performance)
-
+        files: Files to review (defaults to git diff)
+        review_focus: Areas to focus on
         spec_path: Path to spec to review against
-
         output_path: Where to save review
 
-
-
     Returns:
-        JSON string containing review_path, review_content, issues_found,
-        has_blocking_issues, summary, and recommendations
+        JSON string with review results
     """
     result = await generator.review_code_with_gemini(
-
         files=files,
-
         review_focus=review_focus,
-
         spec_path=spec_path,
-
         output_path=output_path
-
     )
     return str(result)
 
 
 @mcp.tool()
 async def generate_documentation_with_gemini(
-
     documentation_type: str,
-
     scope: str,
-
     output_path: str = None,
-
     include_examples: bool = None
-
 ) -> str:
-    """Generate comprehensive documentation with full codebase context
+    """[DEPRECATED v2.0] Generate documentation - Claude should do this instead
 
-    This tool automatically loads and analyzes your codebase (or reuses
-    recently cached context within the session) to generate context-aware
-    documentation with examples from your actual code.
+    ⚠️ DEPRECATED: This tool is deprecated in v2.0. The new approach:
+    - Use query_codebase_tool() to gather relevant code facts
+    - Use find_code_by_intent_tool() to find examples
+    - Let Claude generate documentation using superior writing ability
+    - Use validate_against_codebase_tool() to verify accuracy
+
+    This produces higher quality documentation than Gemini-generated docs.
+
+    This tool is maintained for backward compatibility only.
 
     Args:
-
-        documentation_type: Type of documentation (api, architecture, user-guide, etc.)
-
-        scope: What to document (e.g., "authentication system", "REST API")
-
+        documentation_type: Type of documentation
+        scope: What to document
         output_path: Where to save documentation
-
-        include_examples: Include code examples from the codebase
-
-
+        include_examples: Include code examples
 
     Returns:
-        JSON string containing doc_path, doc_content, sections, and word_count
+        JSON string with documentation (B-grade quality)
     """
     result = await generator.generate_documentation_with_gemini(
-
         documentation_type=documentation_type,
-
         scope=scope,
-
         output_path=output_path,
-
         include_examples=include_examples
-
     )
     return str(result)
 
