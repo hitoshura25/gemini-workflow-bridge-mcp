@@ -1,7 +1,7 @@
-# Refactoring: {refactor_description}
+# Refactoring: {feature_description}
 
 ## Overview
-Auto-generated workflow for refactoring {target}.
+Auto-generated workflow for refactoring {feature_description}.
 
 ## Prerequisites
 - [ ] Codebase analyzed

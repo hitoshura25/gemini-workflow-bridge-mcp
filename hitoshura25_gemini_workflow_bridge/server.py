@@ -12,6 +12,7 @@ Version 2.0 Changes:
 
 from mcp.server.fastmcp import FastMCP
 from typing import List
+import json
 
 from . import generator
 from .resources import WorkflowResources
@@ -68,7 +69,7 @@ async def query_codebase_tool(
         exclude_patterns=exclude_patterns,
         max_tokens_per_answer=max_tokens_per_answer
     )
-    return str(result)
+    return json.dumps(result)
 
 
 @mcp.tool()
@@ -92,13 +93,18 @@ async def find_code_by_intent_tool(
     Returns:
         JSON string with summary, primary files, patterns, dependencies
     """
+    # Validate return_format
+    valid_formats = ["summary_with_references", "detailed_with_snippets"]
+    if return_format not in valid_formats:
+        return json.dumps({"error": f"Invalid return_format. Must be one of: {valid_formats}"})
+
     result = await find_code_by_intent(
         intent=intent,
         return_format=return_format,
         max_files=max_files,
         scope=scope
     )
-    return str(result)
+    return json.dumps(result)
 
 
 @mcp.tool()
@@ -128,7 +134,7 @@ async def trace_feature_tool(
         max_depth=max_depth,
         include_data_flow=include_data_flow
     )
-    return str(result)
+    return json.dumps(result)
 
 
 @mcp.tool()
@@ -150,12 +156,22 @@ async def list_error_patterns_tool(
     Returns:
         JSON string with patterns found, inconsistencies, and summary
     """
+    # Validate pattern_type
+    valid_types = ["error_handling", "logging", "async_patterns", "database_queries"]
+    if pattern_type not in valid_types:
+        return json.dumps({"error": f"Invalid pattern_type. Must be one of: {valid_types}"})
+
+    # Validate group_by
+    valid_groups = ["file", "pattern", "severity"]
+    if group_by not in valid_groups:
+        return json.dumps({"error": f"Invalid group_by. Must be one of: {valid_groups}"})
+
     result = await list_error_patterns(
         pattern_type=pattern_type,
         directory=directory,
         group_by=group_by
     )
-    return str(result)
+    return json.dumps(result)
 
 
 # ============================================================================
@@ -186,7 +202,7 @@ async def validate_against_codebase_tool(
         validation_checks=validation_checks,
         codebase_context=codebase_context
     )
-    return str(result)
+    return json.dumps(result)
 
 
 @mcp.tool()
@@ -208,12 +224,17 @@ async def check_consistency_tool(
     Returns:
         JSON string with consistency score, matches, violations, recommendations
     """
+    # Validate focus
+    valid_focus = ["naming_conventions", "error_handling", "testing", "api_design", "all"]
+    if focus not in valid_focus:
+        return json.dumps({"error": f"Invalid focus. Must be one of: {valid_focus}"})
+
     result = await check_consistency(
         focus=focus,
         new_code_or_spec=new_code_or_spec,
         scope=scope
     )
-    return str(result)
+    return json.dumps(result)
 
 
 # ============================================================================
@@ -241,13 +262,18 @@ async def generate_feature_workflow_tool(
     Returns:
         JSON string with workflow_path, content, estimated_steps, tools_required
     """
+    # Validate workflow_style
+    valid_styles = ["interactive", "automated", "template"]
+    if workflow_style not in valid_styles:
+        return json.dumps({"error": f"Invalid workflow_style. Must be one of: {valid_styles}"})
+
     result = await generate_feature_workflow(
         feature_description=feature_description,
         workflow_style=workflow_style,
         save_to=save_to,
         include_validation_steps=include_validation_steps
     )
-    return str(result)
+    return json.dumps(result)
 
 
 @mcp.tool()
@@ -273,6 +299,11 @@ async def generate_slash_command_tool(
     Returns:
         JSON string with command_path, command_content, usage_example
     """
+    # Validate workflow_type
+    valid_types = ["feature", "refactor", "debug", "review", "custom"]
+    if workflow_type not in valid_types:
+        return json.dumps({"error": f"Invalid workflow_type. Must be one of: {valid_types}"})
+
     result = await generate_slash_command(
         command_name=command_name,
         workflow_type=workflow_type,
@@ -280,7 +311,7 @@ async def generate_slash_command_tool(
         steps=steps,
         save_to=save_to
     )
-    return str(result)
+    return json.dumps(result)
 
 
 # ============================================================================

@@ -43,11 +43,13 @@ def estimate_compression_ratio(
 
     Returns:
         Compression ratio (e.g., 174.0 means 174:1 compression)
+        Returns 0.0 if either input or output is 0
     """
     input_tokens = count_tokens(input_text) if isinstance(input_text, str) else input_text
     output_tokens = count_tokens(output_text) if isinstance(output_text, str) else output_text
 
-    if output_tokens == 0:
+    # Handle edge cases
+    if input_tokens == 0 or output_tokens == 0:
         return 0.0
 
     return round(input_tokens / output_tokens, 1)

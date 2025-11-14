@@ -50,7 +50,7 @@ Version 2.0 is a **complete redesign** that transforms this MCP from a "spec gen
    gemini  # Follow authentication prompts
    ```
 
-2. **Python 3.9+** with pip
+2. **Python 3.11+** with pip
 
 ### Install the MCP Server
 
@@ -65,7 +65,7 @@ pip install -e .
 
 ### Configure Claude Code
 
-Add to your Claude Code MCP settings (`~/.config/claude-code/mcp.json` or similar):
+Add to your Claude Code MCP settings (typically `claude_desktop_config.json`):
 
 ```json
 {

@@ -38,10 +38,13 @@ async def list_error_patterns(
         codebase_loader = CodebaseLoader()
 
         # Load codebase
+        # If directory is ".", pass None to search current directory
+        # Otherwise, pass as a list
+        directories = None if directory == "." else [directory]
         files_content = codebase_loader.load_files(
             file_patterns=["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.java", "*.go"],
             exclude_patterns=["node_modules/", "dist/", "build/", "__pycache__/"],
-            directories=[directory] if directory != "." else None
+            directories=directories
         )
 
         # Build codebase context

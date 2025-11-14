@@ -16,6 +16,8 @@ def load_system_prompt(prompt_name: str) -> str:
 
     Raises:
         FileNotFoundError: If prompt file doesn't exist
+        UnicodeDecodeError: If file cannot be decoded as UTF-8
+        PermissionError: If file cannot be read due to permissions
     """
     prompts_dir = Path(__file__).parent.parent / "prompts"
     prompt_file = prompts_dir / f"{prompt_name}.txt"
@@ -26,7 +28,17 @@ def load_system_prompt(prompt_name: str) -> str:
             f"Available prompts should be in: {prompts_dir}"
         )
 
-    return prompt_file.read_text(encoding='utf-8')
+    try:
+        return prompt_file.read_text(encoding='utf-8')
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(
+            e.encoding, e.object, e.start, e.end,
+            f"Failed to decode prompt file {prompt_file} as UTF-8"
+        )
+    except PermissionError as e:
+        raise PermissionError(
+            f"Permission denied when reading prompt file: {prompt_file}"
+        ) from e
 
 
 def build_prompt_with_context(

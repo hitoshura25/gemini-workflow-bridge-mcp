@@ -41,25 +41,23 @@ async def generate_feature_workflow(
             exclude_patterns=["node_modules/", "dist/", "build/", "__pycache__/"]
         )
 
-        # Get project structure
-        project_structure = codebase_loader.get_project_structure()
-
-        # Load template based on feature type
-        template_path = Path(__file__).parent.parent / "workflows" / "feature_template.md"
+        # Determine which template to use
+        # Simple heuristic: if description contains "refactor", use refactor template
+        is_refactor = "refactor" in feature_description.lower()
+        template_name = "refactor_template.md" if is_refactor else "feature_template.md"
+        template_path = Path(__file__).parent.parent / "workflows" / template_name
         template_content = template_path.read_text()
 
-        # Build context about codebase
+        # Build context about codebase (simplified since we don't have get_project_structure)
         context_parts = [
-            "# Project Structure",
-            project_structure,
-            "",
             "# Files in Project",
             "\n".join([f"- {path}" for path in files_content.keys()])
         ]
         context = "\n".join(context_parts)
 
         # Build prompt to customize workflow
-        prompt = f"""Create a detailed workflow for implementing this feature: {feature_description}
+        task_type = "refactoring" if is_refactor else "implementing"
+        prompt = f"""Create a detailed workflow for {task_type} this feature: {feature_description}
 
 Use this template as a starting point:
 {template_content}
@@ -81,10 +79,16 @@ Provide your response as JSON with this structure:
   "dependencies": ["dep1", "dep2"]
 }}"""
 
-        # Query Gemini
-        response = await gemini_client.analyze_with_context(
-            prompt=prompt,
-            context=context,
+        # Build complete prompt with context
+        full_prompt = f"""Context:
+{context}
+
+Task:
+{prompt}"""
+
+        # Query Gemini using generate_content method
+        response = await gemini_client.generate_content(
+            prompt=full_prompt,
             temperature=0.7
         )
 
