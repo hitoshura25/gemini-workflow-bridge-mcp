@@ -2,7 +2,7 @@
 
 import json
 import time
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
 from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
