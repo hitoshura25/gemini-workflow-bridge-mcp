@@ -1,14 +1,14 @@
-# Gemini Workflow Bridge MCP v2.0
+# Gemini Workflow Bridge MCP
 
 **Gemini as Context Compression Engine + Claude as Reasoning Engine = A-Grade Results**
 
-## What's New in v2.0 🚀
+## Overview
 
-Version 2.0 is a **complete redesign** that transforms this MCP from a "spec generation tool" to a "context compression engine" that optimally leverages both Claude Code and Gemini's strengths.
+This MCP is a **context compression engine** that optimally leverages both Claude Code and Gemini's strengths.
 
-### Key Improvements
+### Key Features
 
-- ✅ **Quality:** B-grade → A-grade specifications (Gemini provides facts, Claude does reasoning)
+- ✅ **Quality:** A-grade specifications (Gemini provides facts, Claude does reasoning)
 - ✅ **Cost:** 47-61% reduction in Claude tokens (expensive operations move to free Gemini tier)
 - ✅ **Compression:** 174:1 token compression ratio (50K tokens → 300 token summaries)
 - ✅ **DX:** Auto-generated workflows and slash commands for common tasks
@@ -108,7 +108,6 @@ validate_against_codebase_tool(
 
 - [Full Documentation](./README.md) - You're reading it!
 - [Implementation Plan](./specs/context-engine-redesign-implementation-plan.md) - Architecture details
-- [Migration Guide](./MIGRATION.md) - Upgrading from v1.x
 - [Configuration Guide](./.env.example) - All configuration options
 
 ## Tools Overview
@@ -159,16 +158,16 @@ User: "Add Redis caching to product API"
 Result: ✅ A-grade spec, 61% token savings, 3.5 minutes
 ```
 
-## Why v2.0 is Better
+## How It Works
 
-| Aspect | v1.x (Old) | v2.0 (New) |
-|--------|-----------|------------|
-| **Spec Creation** | Gemini generates (B-grade) | Claude generates (A-grade) |
-| **Token Usage** | 8,000 Claude tokens | 3,100 Claude tokens (-61%) |
-| **Gemini Role** | Tries to plan & reason | Provides facts only |
-| **Claude Role** | Reviews & fixes Gemini's work | Creates from scratch with facts |
-| **Quality** | B-grade | A-grade |
-| **Workflows** | Manual | Auto-generated |
+| Aspect | Description |
+|--------|-------------|
+| **Spec Creation** | Claude generates A-grade specifications |
+| **Token Usage** | 3,100 Claude tokens (61% reduction vs traditional approaches) |
+| **Gemini Role** | Provides facts only |
+| **Claude Role** | Creates from scratch with facts |
+| **Quality** | A-grade |
+| **Workflows** | Auto-generated |
 
 ## Configuration
 
@@ -181,29 +180,18 @@ TARGET_COMPRESSION_RATIO=100     # Aim for 100:1
 GEMINI_MODEL=auto                # or specific model
 ```
 
-## Migration from v1.x
+## Usage Example
 
-### Quick Migration
-
-**Before (v1.x):**
-```python
-create_specification_with_gemini(feature="Add 2FA")
-# → B-grade spec from Gemini
-```
-
-**After (v2.0):**
 ```python
 # 1. Get facts
 facts = query_codebase_tool(questions=[...])
 
-# 2. Create spec (you do this with superior reasoning)
+# 2. Create spec (Claude does this with superior reasoning)
 spec = create_your_a_grade_spec(facts)
 
 # 3. Validate
 validate_against_codebase_tool(spec=spec)
 ```
-
-See [MIGRATION.md](./MIGRATION.md) for complete guide.
 
 ## Troubleshooting
 
@@ -235,11 +223,11 @@ DEBUG_MODE=true python -m hitoshura25_gemini_workflow_bridge
 
 ```
 hitoshura25_gemini_workflow_bridge/
-├── tools/           # 8 new tools (Tier 1, 2, 3)
+├── tools/           # 8 tools (Tier 1, 2, 3)
 ├── prompts/         # Strict fact extraction prompts
 ├── workflows/       # Workflow templates
 ├── utils/           # Token counting, prompt loading
-├── server.py        # MCP server (v2.0)
+├── server.py        # MCP server
 └── generator.py     # Legacy implementations
 ```
 
@@ -269,7 +257,6 @@ MIT License - see [LICENSE](./LICENSE)
 
 ---
 
-**Version:** 2.0.0
 **Status:** ✅ Production Ready
 **Last Updated:** November 15, 2025
 
