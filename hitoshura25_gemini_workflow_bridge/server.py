@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-MCP Server for hitoshura25-gemini-workflow-bridge v2.0.
+MCP Server for hitoshura25-gemini-workflow-bridge.
 
 MCP server that bridges Claude Code to Gemini CLI for context compression and factual code analysis.
 
-Version 2.0 Changes:
-- Gemini now acts as a "context compression engine" (fact extraction only)
+Key Features:
+- Gemini acts as a "context compression engine" (fact extraction only)
 - Claude handles all reasoning, planning, and specification creation
-- New tools for querying, tracing, validating, and workflow generation
+- Tools for querying, tracing, validating, and workflow generation
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -36,7 +36,7 @@ workflow_resources = WorkflowResources()
 
 
 # ============================================================================
-# Tier 1: Fact Extraction Tools (NEW in v2.0)
+# Tier 1: Fact Extraction Tools
 # ============================================================================
 
 @mcp.tool()
@@ -187,7 +187,7 @@ async def list_error_patterns_tool(
 
 
 # ============================================================================
-# Tier 2: Validation Tools (NEW in v2.0)
+# Tier 2: Validation Tools
 # ============================================================================
 
 @mcp.tool()
@@ -254,7 +254,7 @@ async def check_consistency_tool(
 
 
 # ============================================================================
-# Tier 3: Workflow Automation Tools (NEW in v2.0)
+# Tier 3: Workflow Automation Tools
 # ============================================================================
 
 @mcp.tool()
@@ -339,7 +339,7 @@ async def generate_slash_command_tool(
 
 
 # ============================================================================
-# Legacy Tools (DEPRECATED - Maintained for backward compatibility)
+# Legacy Tools (Maintained for backward compatibility)
 # ============================================================================
 
 @mcp.tool()
@@ -349,10 +349,10 @@ async def analyze_codebase_with_gemini(
     file_patterns: str = None,
     exclude_patterns: str = None
 ) -> str:
-    """[UPDATED v2.0] Analyze codebase using Gemini - now returns FACTS only
+    """Analyze codebase using Gemini - returns FACTS only
 
-    Version 2.0 Update: This tool now uses the fact extraction system prompt
-    to return only factual information, not opinions or suggestions.
+    This tool uses the fact extraction system prompt to return only factual
+    information, not opinions or suggestions.
 
     Consider using query_codebase_tool() for multi-question analysis with
     better token compression.
@@ -371,123 +371,6 @@ async def analyze_codebase_with_gemini(
         directories=directories,
         file_patterns=file_patterns,
         exclude_patterns=exclude_patterns
-    )
-    return str(result)
-
-
-@mcp.tool()
-async def create_specification_with_gemini(
-    feature_description: str,
-    spec_template: str = None,
-    output_path: str = None
-) -> str:
-    """[DEPRECATED v2.0] Generate specifications - Claude should do this instead
-
-    ⚠️ DEPRECATED: This tool is deprecated in v2.0. The new design has:
-    - Gemini extracts facts using query_codebase_tool()
-    - Claude creates specifications using those facts
-    - Claude validates with validate_against_codebase_tool()
-
-    This approach produces A-grade specs vs B-grade with this tool.
-
-    Migration:
-    1. Use query_codebase_tool(questions=[...]) to get facts
-    2. Create spec yourself using superior reasoning
-    3. Validate with validate_against_codebase_tool(spec=...)
-
-    This tool is maintained for backward compatibility only.
-
-    Args:
-        feature_description: What feature to specify
-        spec_template: Specification template to use
-        output_path: Where to save the spec
-
-    Returns:
-        JSON string with spec (B-grade quality)
-    """
-    result = await generator.create_specification_with_gemini(
-        feature_description=feature_description,
-        spec_template=spec_template,
-        output_path=output_path
-    )
-    # Add deprecation warning to result
-    if isinstance(result, dict):
-        result["_deprecation_warning"] = (
-            "This tool is deprecated in v2.0. Use query_codebase_tool() + "
-            "your own specification creation + validate_against_codebase_tool() "
-            "for A-grade results."
-        )
-    return str(result)
-
-
-@mcp.tool()
-async def review_code_with_gemini(
-    files: str = None,
-    review_focus: str = None,
-    spec_path: str = None,
-    output_path: str = None
-) -> str:
-    """[DEPRECATED v2.0] Code review - Consider using new fact extraction tools
-
-    ⚠️ DEPRECATED: While this tool still works, the new v2.0 approach is better:
-    - Use query_codebase_tool() to gather facts about code patterns
-    - Use list_error_patterns_tool() to identify inconsistencies
-    - Use check_consistency_tool() to validate against patterns
-    - Let Claude perform the actual review with better reasoning
-
-    This tool is maintained for backward compatibility only.
-
-    Args:
-        files: Files to review (defaults to git diff)
-        review_focus: Areas to focus on
-        spec_path: Path to spec to review against
-        output_path: Where to save review
-
-    Returns:
-        JSON string with review results
-    """
-    result = await generator.review_code_with_gemini(
-        files=files,
-        review_focus=review_focus,
-        spec_path=spec_path,
-        output_path=output_path
-    )
-    return str(result)
-
-
-@mcp.tool()
-async def generate_documentation_with_gemini(
-    documentation_type: str,
-    scope: str,
-    output_path: str = None,
-    include_examples: bool = None
-) -> str:
-    """[DEPRECATED v2.0] Generate documentation - Claude should do this instead
-
-    ⚠️ DEPRECATED: This tool is deprecated in v2.0. The new approach:
-    - Use query_codebase_tool() to gather relevant code facts
-    - Use find_code_by_intent_tool() to find examples
-    - Let Claude generate documentation using superior writing ability
-    - Use validate_against_codebase_tool() to verify accuracy
-
-    This produces higher quality documentation than Gemini-generated docs.
-
-    This tool is maintained for backward compatibility only.
-
-    Args:
-        documentation_type: Type of documentation
-        scope: What to document
-        output_path: Where to save documentation
-        include_examples: Include code examples
-
-    Returns:
-        JSON string with documentation (B-grade quality)
-    """
-    result = await generator.generate_documentation_with_gemini(
-        documentation_type=documentation_type,
-        scope=scope,
-        output_path=output_path,
-        include_examples=include_examples
     )
     return str(result)
 
