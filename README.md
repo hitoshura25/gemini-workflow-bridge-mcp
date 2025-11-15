@@ -247,7 +247,7 @@ Contributions welcome! Please read:
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/LICENSE)
+Apache 2.0 License - see [LICENSE](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/LICENSE)
 
 ## Credits
 
