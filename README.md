@@ -106,9 +106,9 @@ validate_against_codebase_tool(
 
 ## Documentation
 
-- [Full Documentation](./README.md) - You're reading it!
-- [Implementation Plan](./specs/context-engine-redesign-implementation-plan.md) - Architecture details
-- [Configuration Guide](./.env.example) - All configuration options
+- [Full Documentation](https://github.com/hitoshura25/gemini-workflow-bridge-mcp#readme) - You're reading it!
+- [Implementation Plan](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/specs/context-engine-redesign-implementation-plan.md) - Architecture details
+- [Configuration Guide](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/.env.example) - All configuration options
 
 ## Tools Overview
 
@@ -241,17 +241,17 @@ hitoshura25_gemini_workflow_bridge/
 ## Contributing
 
 Contributions welcome! Please read:
-1. [Implementation Plan](./specs/context-engine-redesign-implementation-plan.md)
+1. [Implementation Plan](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/specs/context-engine-redesign-implementation-plan.md)
 2. [Architecture Overview](#architecture)
 3. Submit PR with tests
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE)
+MIT License - see [LICENSE](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/LICENSE)
 
 ## Credits
 
-- Architecture inspired by [Gemini's analysis](./specs/gemini-notes.md)
+- Architecture inspired by [Gemini's analysis](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/specs/gemini-notes.md)
 - Based on [Anthropic's MCP best practices](https://www.anthropic.com/engineering/code-execution-with-mcp)
 - Built with [FastMCP](https://github.com/jlowin/fastmcp)
 
