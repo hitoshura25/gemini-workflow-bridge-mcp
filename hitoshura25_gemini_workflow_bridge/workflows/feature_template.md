@@ -1,7 +1,7 @@
 # Feature: {feature_description}
 
 ## Overview
-Auto-generated workflow for implementing {feature}.
+Auto-generated workflow for implementing {feature_description}.
 
 ## Prerequisites
 - [ ] Codebase analyzed
