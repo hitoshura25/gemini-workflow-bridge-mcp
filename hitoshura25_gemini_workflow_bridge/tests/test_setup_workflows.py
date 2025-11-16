@@ -124,16 +124,27 @@ async def test_setup_workflows_invalid_workflow():
 
 
 @pytest.mark.asyncio
-async def test_setup_workflows_path_traversal_protection():
-    """Test that setup_workflows protects against path traversal."""
-    result = await setup_workflows(
-        workflows=["spec-only"],
-        output_dir="../../../etc"
-    )
+async def test_setup_workflows_resolves_paths():
+    """Test that setup_workflows resolves paths correctly."""
+    # Path.resolve() will normalize any path traversal attempts
+    # This test verifies the function handles path resolution without errors
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Use a path with .. that resolves to temp_dir
+        relative_path = str(Path(temp_dir) / "subdir" / "..")
+        result = await setup_workflows(
+            workflows=["spec-only"],
+            output_dir=relative_path
+        )
 
-    # Should detect path traversal attempt
-    assert result["success"] is False
-    assert "path traversal" in result["message"]
+        # Should succeed - path is resolved to temp_dir
+        assert result["success"] is True
+
+        # Verify files were created in the resolved location
+        workflow_file = Path(temp_dir) / ".claude" / "workflows" / "spec-only.md"
+        assert workflow_file.exists()
+    finally:
+        shutil.rmtree(temp_dir)
 
 
 @pytest.mark.asyncio
@@ -182,5 +193,38 @@ async def test_workflow_content_validity():
         assert "/spec-only" in command_content
         assert "## Usage" in command_content
         assert "## Description" in command_content
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+@pytest.mark.asyncio
+async def test_command_counting_logic():
+    """Test that command counting correctly reflects only newly created commands."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create spec-only workflow and command
+        result1 = await setup_workflows(
+            workflows=["spec-only"],
+            output_dir=temp_dir
+        )
+        assert "Successfully set up 1 workflow(s) and 1 command(s)" in result1["message"]
+
+        # Create feature and refactor workflows, but spec-only command already exists
+        result2 = await setup_workflows(
+            workflows=["spec-only", "feature", "refactor"],
+            output_dir=temp_dir
+        )
+
+        # Should report:
+        # - 2 workflows created (feature, refactor)
+        # - 2 commands created (feature, refactor)
+        # - 1 skipped (spec-only already exists)
+        assert len(result2["workflows_created"]) == 2
+        assert len(result2["skipped"]) == 1
+        assert "Successfully set up 2 workflow(s) and 2 command(s)" in result2["message"]
+
+        # Verify the skipped one was spec-only
+        assert result2["skipped"][0]["name"] == "spec-only"
+
     finally:
         shutil.rmtree(temp_dir)

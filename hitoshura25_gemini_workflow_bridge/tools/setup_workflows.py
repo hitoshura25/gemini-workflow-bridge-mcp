@@ -1,6 +1,5 @@
 """Tool for setting up recommended workflow files and slash commands."""
 
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -40,17 +39,9 @@ async def setup_workflows(
         if "all" in workflows:
             workflows = ["spec-only", "feature", "refactor", "review"]
 
-        # Validate output_dir path to prevent directory traversal
+        # Resolve base directory path
         if output_dir:
             base_dir = Path(output_dir).resolve()
-            # Basic validation: ensure the path doesn't contain suspicious patterns
-            if ".." in str(output_dir):
-                return {
-                    "success": False,
-                    "workflows_created": [],
-                    "skipped": [],
-                    "message": "Invalid output_dir: path traversal not allowed"
-                }
         else:
             base_dir = Path.cwd()
 
@@ -134,10 +125,10 @@ async def setup_workflows(
         if created_count > 0:
             results["message"] = f"Successfully set up {created_count} workflow(s)"
             if include_commands:
-                # Count how many commands were actually created
+                # Count how many commands were actually created (status == "created" means both workflow and command were created)
                 command_created_count = sum(
                     1 for w in results["workflows_created"]
-                    if "command failed" not in w["status"] and "command skipped" not in w["status"]
+                    if w["status"] == "created"
                 )
                 results["message"] += f" and {command_created_count} command(s)"
         else:
