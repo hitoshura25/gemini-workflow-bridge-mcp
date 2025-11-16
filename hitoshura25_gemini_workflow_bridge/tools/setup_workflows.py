@@ -1,5 +1,6 @@
 """Tool for setting up recommended workflow files and slash commands."""
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -35,9 +36,11 @@ async def setup_workflows(
         if workflows is None:
             workflows = ["spec-only"]
 
-        # Expand 'all' to all available workflows
+        # Expand 'all' to all available workflows, then remove duplicates
         if "all" in workflows:
             workflows = ["spec-only", "feature", "refactor", "review"]
+        # Remove duplicates while preserving order
+        workflows = list(dict.fromkeys(workflows))
 
         # Resolve base directory path
         if output_dir:
@@ -45,9 +48,9 @@ async def setup_workflows(
         else:
             base_dir = Path.cwd()
 
-        # Define output directories
-        workflow_dir = base_dir / ".claude" / "workflows"
-        command_dir = base_dir / ".claude" / "commands"
+        # Define output directories (respect environment variables)
+        workflow_dir = base_dir / os.getenv("DEFAULT_WORKFLOW_DIR", ".claude/workflows")
+        command_dir = base_dir / os.getenv("DEFAULT_COMMAND_DIR", ".claude/commands")
 
         # Check write permissions
         try:
@@ -73,8 +76,12 @@ async def setup_workflows(
         for workflow_name in workflows:
             # Validate workflow name against allowed list
             if workflow_name not in WORKFLOW_TEMPLATES:
+                workflow_path = workflow_dir / f"{workflow_name}.md"
+                command_path = command_dir / f"{workflow_name}.md" if include_commands else None
                 results["skipped"].append({
                     "name": workflow_name,
+                    "workflow_path": str(workflow_path.relative_to(base_dir)),
+                    "command_path": str(command_path.relative_to(base_dir)) if command_path else None,
                     "reason": f"Unknown workflow type: {workflow_name}. Available: {list(WORKFLOW_TEMPLATES.keys())}"
                 })
                 continue
@@ -93,6 +100,7 @@ async def setup_workflows(
             # Check if workflow file already exists
             if workflow_path.exists() and not overwrite:
                 workflow_result["status"] = "skipped (already exists)"
+                workflow_result["reason"] = "Workflow file already exists"
                 results["skipped"].append(workflow_result)
                 continue
 
@@ -102,6 +110,8 @@ async def setup_workflows(
             except (PermissionError, OSError) as e:
                 results["skipped"].append({
                     "name": workflow_name,
+                    "workflow_path": str(workflow_path.relative_to(base_dir)),
+                    "command_path": str(command_path.relative_to(base_dir)) if command_path else None,
                     "reason": f"Failed to write workflow file: {str(e)}"
                 })
                 continue

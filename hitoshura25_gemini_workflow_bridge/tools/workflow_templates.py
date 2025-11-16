@@ -52,9 +52,9 @@ Save to `specs/` directory with descriptive filename.
 Creates a detailed specification document for a feature without implementing it. Uses the Gemini MCP Server to gather facts about the codebase and validate the specification for completeness.
 
 ## Steps
-1. Use query_codebase_tool to gather facts about relevant codebase areas
+1. Use `query_codebase_tool` to gather facts about relevant codebase areas
 2. Create detailed specification document using the facts
-3. Use validate_against_codebase_tool to check completeness
+3. Use `validate_against_codebase_tool` to check completeness
 4. Address any validation issues
 5. Save specification to specs/ directory
 
@@ -106,7 +106,7 @@ Implement a new feature with proper planning, validation, and testing.
 Implements a new feature following the Gemini workflow: spec creation, validation, implementation, and testing.
 
 ## Steps
-1. Create specification using query_codebase_tool
+1. Create specification using `query_codebase_tool`
 2. Validate specification against codebase patterns
 3. Implement the feature
 4. Add comprehensive tests
@@ -160,9 +160,9 @@ Refactor existing code while maintaining functionality and following codebase pa
 Refactors existing code following best practices: analyze, plan, validate, execute, and verify.
 
 ## Steps
-1. Analyze current implementation using trace_feature_tool
+1. Analyze current implementation using `trace_feature_tool`
 2. Create refactoring specification
-3. Validate plan with check_consistency_tool
+3. Validate plan with `check_consistency_tool`
 4. Execute refactoring incrementally
 5. Verify with tests and validation
 

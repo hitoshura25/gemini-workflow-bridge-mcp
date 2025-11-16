@@ -118,7 +118,14 @@ async def test_setup_workflows_invalid_workflow():
 
         assert result["success"] is False
         assert len(result["skipped"]) == 1
-        assert "Unknown workflow type" in result["skipped"][0]["reason"]
+
+        # Verify consistent structure for skipped items
+        skipped_item = result["skipped"][0]
+        assert "name" in skipped_item
+        assert "workflow_path" in skipped_item
+        assert "command_path" in skipped_item
+        assert "reason" in skipped_item
+        assert "Unknown workflow type" in skipped_item["reason"]
     finally:
         shutil.rmtree(temp_dir)
 
@@ -172,7 +179,7 @@ async def test_workflow_content_validity():
     """Test that generated workflow files contain expected content."""
     temp_dir = tempfile.mkdtemp()
     try:
-        result = await setup_workflows(
+        await setup_workflows(
             workflows=["spec-only"],
             output_dir=temp_dir
         )
@@ -225,6 +232,98 @@ async def test_command_counting_logic():
 
         # Verify the skipped one was spec-only
         assert result2["skipped"][0]["name"] == "spec-only"
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_workflow_handling():
+    """Test that duplicate workflow names are handled correctly."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Request spec-only twice explicitly
+        result = await setup_workflows(
+            workflows=["spec-only", "feature", "spec-only"],
+            output_dir=temp_dir
+        )
+
+        # Should create 2 workflows (spec-only and feature), not 3
+        assert result["success"] is True
+        assert len(result["workflows_created"]) == 2
+
+        workflow_names = [w["name"] for w in result["workflows_created"]]
+        assert "spec-only" in workflow_names
+        assert "feature" in workflow_names
+        # Verify spec-only appears only once
+        assert workflow_names.count("spec-only") == 1
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+@pytest.mark.asyncio
+async def test_all_with_duplicates():
+    """Test that 'all' with other workflows removes duplicates."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Request "all" along with spec-only explicitly
+        result = await setup_workflows(
+            workflows=["spec-only", "all"],
+            output_dir=temp_dir
+        )
+
+        # Should create all 4 workflows without duplication
+        assert result["success"] is True
+        assert len(result["workflows_created"]) == 4
+
+        workflow_names = [w["name"] for w in result["workflows_created"]]
+        assert "spec-only" in workflow_names
+        assert "feature" in workflow_names
+        assert "refactor" in workflow_names
+        assert "review" in workflow_names
+        # Verify no duplicates
+        assert len(workflow_names) == len(set(workflow_names))
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+@pytest.mark.asyncio
+async def test_environment_variable_support():
+    """Test that DEFAULT_WORKFLOW_DIR and DEFAULT_COMMAND_DIR are respected."""
+    import os
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Set custom environment variables
+        old_workflow_dir = os.environ.get("DEFAULT_WORKFLOW_DIR")
+        old_command_dir = os.environ.get("DEFAULT_COMMAND_DIR")
+
+        os.environ["DEFAULT_WORKFLOW_DIR"] = "custom/workflows"
+        os.environ["DEFAULT_COMMAND_DIR"] = "custom/commands"
+
+        result = await setup_workflows(
+            workflows=["spec-only"],
+            output_dir=temp_dir
+        )
+
+        # Verify files were created in custom directories
+        workflow_file = Path(temp_dir) / "custom" / "workflows" / "spec-only.md"
+        command_file = Path(temp_dir) / "custom" / "commands" / "spec-only.md"
+
+        assert workflow_file.exists(), f"Expected workflow at {workflow_file}"
+        assert command_file.exists(), f"Expected command at {command_file}"
+
+        # Restore original environment
+        if old_workflow_dir:
+            os.environ["DEFAULT_WORKFLOW_DIR"] = old_workflow_dir
+        else:
+            os.environ.pop("DEFAULT_WORKFLOW_DIR", None)
+
+        if old_command_dir:
+            os.environ["DEFAULT_COMMAND_DIR"] = old_command_dir
+        else:
+            os.environ.pop("DEFAULT_COMMAND_DIR", None)
 
     finally:
         shutil.rmtree(temp_dir)
