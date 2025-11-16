@@ -24,7 +24,8 @@ from .tools import (
     validate_against_codebase,
     check_consistency,
     generate_feature_workflow,
-    generate_slash_command
+    generate_slash_command,
+    setup_workflows
 )
 from .utils import validate_enum_parameter
 
@@ -336,6 +337,39 @@ async def generate_slash_command_tool(
         save_to=save_to
     )
     return json.dumps(result)
+
+
+@mcp.tool()
+async def setup_workflows_tool(
+    workflows: List[str] = None,
+    output_dir: str = None,
+    overwrite: bool = False,
+    include_commands: bool = True
+) -> str:
+    """Set up recommended workflow files and slash commands for the Gemini MCP Server
+
+    Automatically generates the recommended workflow files and slash commands,
+    including the spec-only workflow. This makes it easy to start using workflows
+    immediately after installation.
+
+    Args:
+        workflows: List of workflows to set up. Options: ['spec-only', 'feature', 'refactor', 'review', 'all']
+                  Default: ['spec-only']
+        output_dir: Base directory for outputs (workflows go in .claude/workflows/, commands in .claude/commands/)
+                   Default: current directory
+        overwrite: Whether to overwrite existing files. Default: False
+        include_commands: Whether to also create slash commands for the workflows. Default: True
+
+    Returns:
+        JSON string with success status, workflows_created, skipped items, and message
+    """
+    result = await setup_workflows(
+        workflows=workflows,
+        output_dir=output_dir,
+        overwrite=overwrite,
+        include_commands=include_commands
+    )
+    return json.dumps(result, indent=2)
 
 
 # ============================================================================
