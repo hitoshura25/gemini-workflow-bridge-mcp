@@ -30,43 +30,45 @@ async def trace_feature(
 
     Returns:
         Dictionary with flow steps, dependencies, DB operations, and external calls
+
+    Raises:
+        Exception: If tracing fails due to client errors, file loading errors, or other issues
     """
-    try:
-        start_time = time.time()
+    start_time = time.time()
 
-        # Initialize clients
-        gemini_client = GeminiClient()
-        codebase_loader = CodebaseLoader()
+    # Initialize clients
+    gemini_client = GeminiClient()
+    codebase_loader = CodebaseLoader()
 
-        # Load codebase
-        files_content = codebase_loader.load_files(
-            file_patterns=["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.java", "*.go"],
-            exclude_patterns=["node_modules/", "dist/", "build/", "__pycache__/"]
-        )
+    # Load codebase
+    files_content = codebase_loader.load_files(
+        file_patterns=["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.java", "*.go"],
+        exclude_patterns=["node_modules/", "dist/", "build/", "__pycache__/"]
+    )
 
-        # Build codebase context
-        context_parts = ["# Codebase Files\n"]
-        for file_path, content in files_content.items():
-            context_parts.append(f"## File: {file_path}")
-            context_parts.append(f"```\n{content}\n```\n")
+    # Build codebase context
+    context_parts = ["# Codebase Files\n"]
+    for file_path, content in files_content.items():
+        context_parts.append(f"## File: {file_path}")
+        context_parts.append(f"```\n{content}\n```\n")
 
-        codebase_context = "\n".join(context_parts)
-        input_tokens = count_tokens(codebase_context)
+    codebase_context = "\n".join(context_parts)
+    input_tokens = count_tokens(codebase_context)
 
-        # Load fact extraction system prompt
-        system_prompt = load_system_prompt("fact_extraction_system_prompt")
+    # Load fact extraction system prompt
+    system_prompt = load_system_prompt("fact_extraction_system_prompt")
 
-        # Build task
-        data_flow_instruction = ""
-        if include_data_flow:
-            data_flow_instruction = """
+    # Build task
+    data_flow_instruction = ""
+    if include_data_flow:
+        data_flow_instruction = """
 For each step, also include:
 - data_in: Input data type/structure
 - data_out: Output data type/structure"""
 
-        entry_point_text = f"\nStarting from: {entry_point}" if entry_point else ""
+    entry_point_text = f"\nStarting from: {entry_point}" if entry_point else ""
 
-        task = f"""Trace the execution flow for: {feature}{entry_point_text}
+    task = f"""Trace the execution flow for: {feature}{entry_point_text}
 
 Follow the code execution up to {max_depth} steps deep.{data_flow_instruction}
 
@@ -99,45 +101,31 @@ Provide your response as JSON with this structure:
   ]
 }}"""
 
-        # Build complete prompt
-        full_prompt = build_prompt_with_context(
-            system_prompt=system_prompt,
-            user_task=task,
-            context=codebase_context
-        )
+    # Build complete prompt
+    full_prompt = build_prompt_with_context(
+        system_prompt=system_prompt,
+        user_task=task,
+        context=codebase_context
+    )
 
-        # Query Gemini
-        response = await gemini_client.generate_content(
-            prompt=full_prompt,
-            temperature=0.3
-        )
+    # Query Gemini
+    response = await gemini_client.generate_content(
+        prompt=full_prompt,
+        temperature=0.3
+    )
 
-        # Parse response
-        try:
-            result = json.loads(response)
-        except json.JSONDecodeError:
-            # Fallback structure
-            result = {
-                "flow": [],
-                "dependencies": [],
-                "database_operations": [],
-                "external_calls": []
-            }
+    # Parse response
+    try:
+        result = json.loads(response)
+    except json.JSONDecodeError as e:
+        # If Gemini returns non-JSON response, fail fast
+        raise ValueError(f"Failed to parse Gemini response as JSON: {str(e)}. Response: {response[:200]}") from e
 
-        # Calculate output tokens and compression
-        output_tokens = count_tokens(json.dumps(result))
-        analysis_time = time.time() - start_time
+    # Calculate output tokens and compression
+    output_tokens = count_tokens(json.dumps(result))
+    analysis_time = time.time() - start_time
 
-        return {
-            **result,
-            "metadata": format_token_stats(input_tokens, output_tokens, analysis_time)
-        }
-
-    except Exception as e:
-        return {
-            "error": str(e),
-            "flow": [],
-            "dependencies": [],
-            "database_operations": [],
-            "external_calls": []
-        }
+    return {
+        **result,
+        "metadata": format_token_stats(input_tokens, output_tokens, analysis_time)
+    }
