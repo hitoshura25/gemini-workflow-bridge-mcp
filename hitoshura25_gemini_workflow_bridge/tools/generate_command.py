@@ -27,10 +27,12 @@ async def generate_slash_command(
 
     Returns:
         Dictionary with command_path, command_content, and usage_example
+
+    Raises:
+        Exception: If command generation fails due to file I/O errors or invalid parameters
     """
-    try:
-        # Define command templates
-        command_templates = {
+    # Define command templates
+    command_templates = {
             "feature": """# /{command_name} - Complete Feature Implementation Workflow
 
 ## Description
@@ -152,46 +154,38 @@ This command performs automated code review using Gemini's large context window.
 ## Steps
 {custom_steps}
 """
-        }
+    }
 
-        # Get template
-        if workflow_type == "custom" and steps:
-            custom_steps = "\n".join([f"{i+1}. {step}" for i, step in enumerate(steps)])
-            template = command_templates["custom"].format(
-                command_name=command_name,
-                description=description,
-                custom_steps=custom_steps
-            )
-        else:
-            template = command_templates[workflow_type].format(
-                command_name=command_name,
-                description=description
-            )
+    # Get template
+    if workflow_type == "custom" and steps:
+        custom_steps = "\n".join([f"{i+1}. {step}" for i, step in enumerate(steps)])
+        template = command_templates["custom"].format(
+            command_name=command_name,
+            description=description,
+            custom_steps=custom_steps
+        )
+    else:
+        template = command_templates[workflow_type].format(
+            command_name=command_name,
+            description=description
+        )
 
-        # Determine save path
-        if not save_to:
-            command_dir = Path(os.getenv("DEFAULT_COMMAND_DIR", "./.claude/commands"))
-            command_dir.mkdir(parents=True, exist_ok=True)
-            save_to = str(command_dir / f"{command_name}.md")
+    # Determine save path
+    if not save_to:
+        command_dir = Path(os.getenv("DEFAULT_COMMAND_DIR", "./.claude/commands"))
+        command_dir.mkdir(parents=True, exist_ok=True)
+        save_to = str(command_dir / f"{command_name}.md")
 
-        # Save command
-        command_file = Path(save_to)
-        command_file.parent.mkdir(parents=True, exist_ok=True)
-        command_file.write_text(template)
+    # Save command
+    command_file = Path(save_to)
+    command_file.parent.mkdir(parents=True, exist_ok=True)
+    command_file.write_text(template)
 
-        # Generate usage example
-        usage_example = f"/{command_name} <description>"
+    # Generate usage example
+    usage_example = f"/{command_name} <description>"
 
-        return {
-            "command_path": str(save_to),
-            "command_content": template,
-            "usage_example": usage_example
-        }
-
-    except Exception as e:
-        return {
-            "error": str(e),
-            "command_path": "",
-            "command_content": f"Error generating command: {str(e)}",
-            "usage_example": ""
-        }
+    return {
+        "command_path": str(save_to),
+        "command_content": template,
+        "usage_example": usage_example
+    }

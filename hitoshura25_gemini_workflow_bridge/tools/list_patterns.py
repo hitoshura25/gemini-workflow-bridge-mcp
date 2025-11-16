@@ -29,45 +29,48 @@ async def list_error_patterns(
 
     Returns:
         Dictionary with patterns found, inconsistencies, and summary
+
+    Raises:
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If pattern extraction fails due to client errors or file loading errors
     """
-    try:
-        start_time = time.time()
+    start_time = time.time()
 
-        # Initialize clients
-        gemini_client = GeminiClient()
-        codebase_loader = CodebaseLoader()
+    # Initialize clients
+    gemini_client = GeminiClient()
+    codebase_loader = CodebaseLoader()
 
-        # Load codebase
-        # If directory is ".", pass None to search current directory
-        # Otherwise, pass as a list
-        directories = None if directory == "." else [directory]
-        files_content = codebase_loader.load_files(
-            file_patterns=["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.java", "*.go"],
-            exclude_patterns=["node_modules/", "dist/", "build/", "__pycache__/"],
-            directories=directories
-        )
+    # Load codebase
+    # If directory is ".", pass None to search current directory
+    # Otherwise, pass as a list
+    directories = None if directory == "." else [directory]
+    files_content = codebase_loader.load_files(
+        file_patterns=["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.java", "*.go"],
+        exclude_patterns=["node_modules/", "dist/", "build/", "__pycache__/"],
+        directories=directories
+    )
 
-        # Build codebase context
-        context_parts = ["# Codebase Files\n"]
-        for file_path, content in files_content.items():
-            context_parts.append(f"## File: {file_path}")
-            context_parts.append(f"```\n{content}\n```\n")
+    # Build codebase context
+    context_parts = ["# Codebase Files\n"]
+    for file_path, content in files_content.items():
+        context_parts.append(f"## File: {file_path}")
+        context_parts.append(f"```\n{content}\n```\n")
 
-        codebase_context = "\n".join(context_parts)
-        input_tokens = count_tokens(codebase_context)
+    codebase_context = "\n".join(context_parts)
+    input_tokens = count_tokens(codebase_context)
 
-        # Load pattern extraction system prompt
-        system_prompt = load_system_prompt("pattern_extraction_prompt")
+    # Load pattern extraction system prompt
+    system_prompt = load_system_prompt("pattern_extraction_prompt")
 
-        # Build task based on pattern type
-        pattern_descriptions = {
-            "error_handling": "error handling patterns (try/catch, throw, reject, error classes)",
-            "logging": "logging patterns (console.log, logger calls, log levels)",
-            "async_patterns": "async patterns (async/await, promises, callbacks)",
-            "database_queries": "database query patterns (ORM calls, raw SQL, query builders)"
-        }
+    # Build task based on pattern type
+    pattern_descriptions = {
+        "error_handling": "error handling patterns (try/catch, throw, reject, error classes)",
+        "logging": "logging patterns (console.log, logger calls, log levels)",
+        "async_patterns": "async patterns (async/await, promises, callbacks)",
+        "database_queries": "database query patterns (ORM calls, raw SQL, query builders)"
+    }
 
-        task = f"""Analyze the codebase for {pattern_descriptions[pattern_type]}.
+    task = f"""Analyze the codebase for {pattern_descriptions[pattern_type]}.
 
 Group results by: {group_by}
 
@@ -94,43 +97,31 @@ Provide your response as JSON with this structure:
 Focus on COUNTING and CATEGORIZING patterns, not judging them.
 Identify inconsistencies where different patterns are used for the same purpose."""
 
-        # Build complete prompt
-        full_prompt = build_prompt_with_context(
-            system_prompt=system_prompt,
-            user_task=task,
-            context=codebase_context
-        )
+    # Build complete prompt
+    full_prompt = build_prompt_with_context(
+        system_prompt=system_prompt,
+        user_task=task,
+        context=codebase_context
+    )
 
-        # Query Gemini
-        response = await gemini_client.generate_content(
-            prompt=full_prompt,
-            temperature=0.3
-        )
+    # Query Gemini
+    response = await gemini_client.generate_content(
+        prompt=full_prompt,
+        temperature=0.3
+    )
 
-        # Parse response
-        try:
-            result = json.loads(response)
-        except json.JSONDecodeError:
-            # Fallback structure
-            result = {
-                "patterns_found": {},
-                "inconsistencies": [],
-                "summary": response[:500]
-            }
+    # Parse response
+    try:
+        result = json.loads(response)
+    except json.JSONDecodeError as e:
+        # If Gemini returns non-JSON response, fail fast
+        raise ValueError(f"Failed to parse Gemini response as JSON: {str(e)}. Response: {response[:200]}") from e
 
-        # Calculate output tokens and compression
-        output_tokens = count_tokens(json.dumps(result))
-        analysis_time = time.time() - start_time
+    # Calculate output tokens and compression
+    output_tokens = count_tokens(json.dumps(result))
+    analysis_time = time.time() - start_time
 
-        return {
-            **result,
-            "metadata": format_token_stats(input_tokens, output_tokens, analysis_time)
-        }
-
-    except Exception as e:
-        return {
-            "error": str(e),
-            "patterns_found": {},
-            "inconsistencies": [],
-            "summary": f"Error extracting patterns: {str(e)}"
-        }
+    return {
+        **result,
+        "metadata": format_token_stats(input_tokens, output_tokens, analysis_time)
+    }
