@@ -14,9 +14,9 @@ async def test_server_initialization():
     """Test that the MCP server initializes correctly."""
     assert mcp.name == "hitoshura25_gemini_workflow_bridge"
 
-    # Check that tools are registered (8 core tools + 2 legacy = 10 total)
+    # Check that tools are registered (9 core tools + 2 legacy = 11 total)
     tools = await mcp.list_tools()
-    assert len(tools) == 10
+    assert len(tools) == 11
 
     tool_names = [tool.name for tool in tools]
 
@@ -33,6 +33,7 @@ async def test_server_initialization():
     # Tier 3: Workflow Automation Tools
     assert "generate_feature_workflow_tool" in tool_names
     assert "generate_slash_command_tool" in tool_names
+    assert "setup_workflows_tool" in tool_names
 
     # Legacy Tools (maintained for backward compatibility)
     assert "analyze_codebase_with_gemini" in tool_names
