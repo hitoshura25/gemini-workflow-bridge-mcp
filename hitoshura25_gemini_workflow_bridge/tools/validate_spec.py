@@ -30,7 +30,8 @@ async def validate_against_codebase(
         Dictionary with validation result, completeness score, issues, and suggestions
 
     Raises:
-        Exception: If validation fails due to client errors, file loading errors, or other issues
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If validation fails due to client errors or file loading errors
     """
     start_time = time.time()
 

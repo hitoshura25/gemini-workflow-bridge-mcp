@@ -31,7 +31,8 @@ async def list_error_patterns(
         Dictionary with patterns found, inconsistencies, and summary
 
     Raises:
-        Exception: If pattern extraction fails due to client errors, file loading errors, or other issues
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If pattern extraction fails due to client errors or file loading errors
     """
     start_time = time.time()
 

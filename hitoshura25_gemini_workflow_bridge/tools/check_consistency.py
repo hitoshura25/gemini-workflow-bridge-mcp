@@ -30,7 +30,8 @@ async def check_consistency(
         Dictionary with consistency score, matches, violations, and recommendations
 
     Raises:
-        Exception: If consistency check fails due to client errors, file loading errors, or other issues
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If consistency check fails due to client errors or file loading errors
     """
     start_time = time.time()
 

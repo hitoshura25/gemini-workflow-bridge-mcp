@@ -32,7 +32,8 @@ async def find_code_by_intent(
         Dictionary with summary, primary files, patterns, and dependencies
 
     Raises:
-        Exception: If code search fails due to client errors, file loading errors, or other issues
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If code search fails due to client errors or file loading errors
     """
     start_time = time.time()
 

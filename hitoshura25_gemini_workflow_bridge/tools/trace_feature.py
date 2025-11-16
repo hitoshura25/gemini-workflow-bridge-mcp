@@ -32,7 +32,8 @@ async def trace_feature(
         Dictionary with flow steps, dependencies, DB operations, and external calls
 
     Raises:
-        Exception: If tracing fails due to client errors, file loading errors, or other issues
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If tracing fails due to client errors or file loading errors
     """
     start_time = time.time()
 

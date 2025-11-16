@@ -31,7 +31,8 @@ async def generate_feature_workflow(
         Dictionary with workflow_path, workflow_content, estimated_steps, and tools_required
 
     Raises:
-        Exception: If workflow generation fails due to client errors, file I/O errors, or other issues
+        ValueError: If Gemini returns invalid JSON or missing required keys
+        Exception: If workflow generation fails due to client errors or file I/O errors
     """
     # Initialize clients
     gemini_client = GeminiClient()
@@ -100,6 +101,13 @@ Task:
     except json.JSONDecodeError as e:
         # If Gemini returns non-JSON response, fail fast
         raise ValueError(f"Failed to parse Gemini response as JSON: {str(e)}. Response: {response[:200]}") from e
+
+    # Validate required keys
+    if "workflow_content" not in result:
+        raise ValueError(
+            f"Gemini response missing required 'workflow_content' key. "
+            f"Response keys: {list(result.keys())}"
+        )
 
     # Determine save path
     if not save_to:

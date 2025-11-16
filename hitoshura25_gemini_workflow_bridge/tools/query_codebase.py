@@ -35,7 +35,8 @@ async def query_codebase(
         Dictionary with answers array and metadata including compression ratio
 
     Raises:
-        Exception: If querying fails due to client errors, file loading errors, or other issues
+        ValueError: If Gemini returns invalid JSON response
+        Exception: If querying fails due to client errors or file loading errors
     """
     start_time = time.time()
 
