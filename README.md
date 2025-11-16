@@ -85,6 +85,33 @@ Add to your Claude Code MCP settings (typically `claude_desktop_config.json`):
 
 ## Quick Start
 
+### 1. Set Up Workflows (Recommended First Step)
+
+After installing the MCP server, set up recommended workflows:
+
+```
+In Claude Code:
+"Set up the spec-only workflow for me"
+
+Claude will use setup_workflows_tool to create:
+- .claude/workflows/spec-only.md
+- .claude/commands/spec-only.md
+```
+
+Now you can use the `/spec-only` slash command:
+```
+/spec-only Add user authentication with OAuth2 support
+```
+
+To set up all workflows:
+```
+"Set up all workflows"
+
+Creates: spec-only, feature, refactor, and review workflows
+```
+
+### 2. Use the Tools Directly
+
 ```python
 # 1. Extract facts about your codebase
 query_codebase_tool(
@@ -107,6 +134,7 @@ validate_against_codebase_tool(
 ## Documentation
 
 - [Full Documentation](https://github.com/hitoshura25/gemini-workflow-bridge-mcp#readme) - You're reading it!
+- [Workflows Guide](docs/workflows.md) - Complete workflow documentation
 - [Implementation Plan](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/specs/context-engine-redesign-implementation-plan.md) - Architecture details
 - [Configuration Guide](https://github.com/hitoshura25/gemini-workflow-bridge-mcp/blob/main/.env.example) - All configuration options
 
@@ -130,10 +158,11 @@ validate_against_codebase_tool(
 
 ### 🚀 Tier 3: Workflow Automation
 
-| Tool | Purpose |
-|------|---------|
-| `generate_feature_workflow_tool()` | Generate executable workflows |
-| `generate_slash_command_tool()` | Create custom slash commands |
+| Tool | Purpose | Quick Example |
+|------|---------|---------------|
+| `setup_workflows_tool()` | Set up recommended workflows | `workflows=["all"]` |
+| `generate_feature_workflow_tool()` | Generate executable workflows | Progressive disclosure |
+| `generate_slash_command_tool()` | Create custom slash commands | Automate common tasks |
 
 ## Example: Complete Feature Implementation
 
