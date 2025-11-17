@@ -119,3 +119,74 @@ async def test_resource_handlers():
     # Note: FastMCP resource testing might require specific setup
     # This is a basic test that the server has resources configured
     assert hasattr(mcp, '_resource_manager') or hasattr(mcp, '_resources')
+
+
+@pytest.mark.asyncio
+@patch('hitoshura25_gemini_workflow_bridge.tools.validate_spec.GeminiClient')
+async def test_validate_against_codebase_response_format(mock_gemini_client_class):
+    """Test that validate_against_codebase returns the expected response format with new fields."""
+    from hitoshura25_gemini_workflow_bridge.tools.validate_spec import validate_against_codebase
+    from unittest.mock import AsyncMock
+    import json
+
+    # Mock the Gemini response with the new format
+    mock_gemini_response = {
+        "validation_result": "pass_with_warnings",
+        "completeness_score": 0.7,
+        "score_breakdown": {
+            "what_was_checked": ["file_existence", "dependency_presence"],
+            "what_passed": ["All files exist"],
+            "what_failed": [],
+            "what_was_skipped": ["code_pattern_analysis - no code content provided"]
+        },
+        "verification_limitations": {
+            "available_context": ["file paths", "package.json content"],
+            "missing_context": ["function signatures", "implementation code"],
+            "impact_on_score": "Limited to file and dependency validation"
+        },
+        "issues": [],
+        "missing_elements": {
+            "files": [],
+            "dependencies": [],
+            "functions": []
+        },
+        "pattern_alignment": {
+            "matches_existing_patterns": True,
+            "conflicts": [],
+            "suggestions": []
+        }
+    }
+
+    # Setup mock - generate_content is async so use AsyncMock
+    mock_client_instance = mock_gemini_client_class.return_value
+    mock_client_instance.generate_content = AsyncMock(return_value=json.dumps(mock_gemini_response))
+
+    # Call the function with minimal test data
+    result = await validate_against_codebase(
+        spec_content="# Test Spec\nSome test specification content",
+        validation_checks=["missing_files", "undefined_dependencies"],
+        codebase_context="# Codebase Files\n- test.py"
+    )
+
+    # Verify all expected fields are present
+    assert "validation_result" in result
+    assert "completeness_score" in result
+    assert "score_breakdown" in result
+    assert "verification_limitations" in result
+    assert "issues" in result
+    assert "missing_elements" in result
+    assert "pattern_alignment" in result
+    assert "metadata" in result
+
+    # Verify new fields have the expected structure
+    assert "what_was_checked" in result["score_breakdown"]
+    assert "what_passed" in result["score_breakdown"]
+    assert "what_failed" in result["score_breakdown"]
+    assert "what_was_skipped" in result["score_breakdown"]
+
+    assert "available_context" in result["verification_limitations"]
+    assert "missing_context" in result["verification_limitations"]
+    assert "impact_on_score" in result["verification_limitations"]
+
+    # Verify score is the expected value
+    assert result["completeness_score"] == 0.7

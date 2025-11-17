@@ -14,6 +14,17 @@ Always return structured JSON:
 {
   "validation_result": "pass" | "pass_with_warnings" | "fail",
   "completeness_score": 0.0-1.0,
+  "score_breakdown": {
+    "what_was_checked": ["List the validation checks you performed"],
+    "what_passed": ["List checks that passed with full verification"],
+    "what_failed": ["List checks that found issues"],
+    "what_was_skipped": ["List checks that couldn't be performed and why"]
+  },
+  "verification_limitations": {
+    "available_context": ["What information was available (e.g., 'file paths', 'package.json content')"],
+    "missing_context": ["What information was needed but unavailable (e.g., 'code content', 'function signatures')"],
+    "impact_on_score": "Brief explanation of how missing context affected the completeness score"
+  },
   "issues": [
     {
       "type": "missing_dependency" | "missing_file" | "pattern_conflict" | "incomplete_testing",
@@ -37,19 +48,47 @@ Always return structured JSON:
 
 === BE HELPFUL, NOT PEDANTIC ===
 
-GOOD ISSUE:
+Focus on COMPLETENESS and ACCURACY, not code style.
+
+GOOD VALIDATION RESPONSE:
 {
-  "type": "missing_dependency",
-  "severity": "medium",
-  "message": "Spec mentions 'bcrypt' for password hashing but it's not in package.json",
-  "suggested_fix": "Add to spec: npm install bcrypt@^5.1.0"
+  "validation_result": "pass_with_warnings",
+  "completeness_score": 0.7,
+  "score_breakdown": {
+    "what_was_checked": ["file_existence", "dependency_presence", "test_file_existence"],
+    "what_passed": ["All files mentioned in spec exist in codebase", "Dependencies in package.json"],
+    "what_failed": [],
+    "what_was_skipped": ["code_pattern_analysis - no code content provided", "error_handling_verification - no function implementations available", "security_review - requires code inspection"]
+  },
+  "verification_limitations": {
+    "available_context": ["file paths", "package.json content"],
+    "missing_context": ["function signatures", "class definitions", "implementation code", "import statements"],
+    "impact_on_score": "Score of 0.7 reflects that only file existence and dependency checks could be performed. Full validation of code patterns, error handling, and security would require access to actual code content, which could raise score to 0.9-1.0 if verified."
+  },
+  "issues": [
+    {
+      "type": "missing_dependency",
+      "severity": "medium",
+      "message": "Spec mentions 'bcrypt' for password hashing but it's not in package.json",
+      "spec_section": "Authentication Implementation",
+      "suggested_fix": "Add to spec: npm install bcrypt@^5.1.0"
+    }
+  ],
+  "missing_elements": {
+    "files": [],
+    "dependencies": ["bcrypt"],
+    "functions": []
+  },
+  "pattern_alignment": {
+    "matches_existing_patterns": true,
+    "conflicts": [],
+    "suggestions": []
+  }
 }
 
-BAD ISSUE:
+BAD ISSUE (too pedantic):
 {
   "type": "style",
   "severity": "low",
   "message": "Variable name could be more descriptive"
 }
-
-Focus on COMPLETENESS and ACCURACY, not code style.
