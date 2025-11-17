@@ -27,7 +27,17 @@ async def validate_against_codebase(
         codebase_context: Optional pre-loaded codebase context (otherwise loads fresh)
 
     Returns:
-        Dictionary with validation result, completeness score, issues, and suggestions
+        Dictionary with validation result, completeness score, issues, and suggestions.
+        New fields provide transparency into the scoring:
+
+        - validation_result: "pass" | "pass_with_warnings" | "fail"
+        - completeness_score: 0.0-1.0 numeric score
+        - score_breakdown: What was checked, what passed/failed, what was skipped
+        - verification_limitations: What context was available vs. needed, impact on score
+        - issues: List of specific problems found
+        - missing_elements: Files, dependencies, or functions that don't exist
+        - pattern_alignment: How well spec aligns with existing code patterns
+        - metadata: Token usage and timing statistics
 
     Raises:
         ValueError: If Gemini returns invalid JSON response
