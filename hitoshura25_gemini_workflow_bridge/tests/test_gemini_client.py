@@ -119,3 +119,52 @@ async def test_generate_content_valid_response():
     with patch("asyncio.create_subprocess_exec", return_value=mock_process):
         result = await client.generate_content("test prompt")
         assert result == "Valid response text"
+
+
+@pytest.mark.asyncio
+async def test_generate_content_with_nodejs_warnings():
+    """Test that Node.js warnings in stderr don't cause failures when command succeeds."""
+    with patch('shutil.which', return_value='/usr/bin/gemini'):
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr='')
+            client = GeminiClient(model="auto")
+
+    mock_process = MagicMock()
+    mock_process.returncode = 0
+    # Simulate Node.js warning in stderr but successful response in stdout
+    warning_stderr = b"""Warning: Detected unsettled top-level await at
+     file:///opt/homebrew/Cellar/gemini-cli/0.16.0/libexec/lib/node_modules/@google/gemini-cli/node_modules/yoga-layout/dist/src/index.js:13
+     const Yoga = wrapAssembly(await loadYoga());"""
+    mock_process.communicate = AsyncMock(
+        return_value=(b'{"response": "Valid response despite warnings"}', warning_stderr)
+    )
+
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process):
+        result = await client.generate_content("test prompt")
+        assert result == "Valid response despite warnings"
+
+
+@pytest.mark.asyncio
+async def test_generate_content_warnings_only_on_failure():
+    """Test that warnings-only stderr with non-zero exit code doesn't raise error."""
+    with patch('shutil.which', return_value='/usr/bin/gemini'):
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr='')
+            client = GeminiClient(model="auto")
+
+    mock_process = MagicMock()
+    mock_process.returncode = 1  # Non-zero exit code
+    # Only warnings in stderr, no actual errors
+    warning_stderr = b"""Warning: Detected unsettled top-level await at
+     file:///path/to/module.js:13
+     const Foo = await loadFoo();"""
+    mock_process.communicate = AsyncMock(
+        return_value=(b"", warning_stderr)
+    )
+
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process):
+        # Should not raise error since stderr contains only warnings
+        # Instead, it should log a warning and continue processing the (empty) response
+        with pytest.raises(RuntimeError, match="empty response"):
+            # Will fail on empty response, not on warnings
+            await client.generate_content("test prompt")

@@ -91,16 +91,44 @@ class GeminiClient:
                 await process.wait()
                 raise RuntimeError("Gemini CLI request timed out after 5 minutes")
 
+            # Decode stderr once for reuse
+            stderr_text = stderr.decode('utf-8', errors='replace') if stderr else ""
+
             # Add debug logging
             logger.debug(f"Gemini CLI returncode: {process.returncode}")
             logger.debug(f"Gemini CLI stdout length: {len(stdout)}")
-            if stderr:
-                logger.debug(f"Gemini CLI stderr: {stderr.decode('utf-8', errors='replace')}")
+            if stderr_text:
+                logger.debug(f"Gemini CLI stderr: {stderr_text}")
+
+            # Log any warnings from stderr (even on success)
+            # Common warnings include Node.js top-level await warnings from dependencies
+            if stderr_text and process.returncode == 0:
+                # Check if stderr contains only warnings
+                has_warnings = any(line.strip().startswith('Warning:') for line in stderr_text.split('\n'))
+                if has_warnings:
+                    logger.warning(f"Gemini CLI produced warnings (but succeeded): {stderr_text}")
 
             # Check for errors
             if process.returncode != 0:
-                error_msg = stderr.decode('utf-8', errors='replace').strip()
-                raise RuntimeError(f"Gemini CLI error: {error_msg}")
+                # Filter out Node.js warnings (e.g., "Warning: Detected unsettled top-level await")
+                # These are common with yoga-layout and other dependencies but don't indicate failure
+                error_lines = []
+                for line in stderr_text.split('\n'):
+                    # Skip warning lines and empty lines
+                    if line.strip() and not line.strip().startswith('Warning:'):
+                        # Also skip file paths that are part of warning context
+                        if not line.strip().startswith('file://'):
+                            # Skip lines that look like code snippets from warnings
+                            if not line.strip().startswith('const '):
+                                error_lines.append(line)
+
+                # If we have actual error content after filtering warnings, raise it
+                if error_lines:
+                    error_msg = '\n'.join(error_lines).strip()
+                    raise RuntimeError(f"Gemini CLI error: {error_msg}")
+                else:
+                    # Only warnings were present, log but don't fail
+                    logger.warning(f"Gemini CLI returned non-zero exit code but only warnings were present: {stderr_text}")
 
             # Parse JSON response
             try:
