@@ -8,19 +8,26 @@ import subprocess
 from typing import Optional, Dict, Any
 
 from .cache_manager import ContextCacheManager
+from .utils.retry import (
+    retry_async,
+    RetryConfig,
+    RetryStatistics,
+    RetryableError,
+    NonRetryableError,
+)
 
 # Set up logger for debugging
 logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
-    """Wrapper for Gemini CLI with caching and context management
+    """Wrapper for Gemini CLI with caching, context management, and retry logic
 
     Uses the `gemini` CLI command instead of API calls.
     Requires Gemini CLI to be installed and authenticated.
     """
 
-    def __init__(self, model: str = "auto"):
+    def __init__(self, model: str = "auto", retry_config: Optional[RetryConfig] = None):
         # Validate CLI is installed
         cli_path = shutil.which("gemini")
         if not cli_path:
@@ -49,9 +56,28 @@ class GeminiClient:
         self.model_name = model
         self.cli_path = cli_path
 
+        # Initialize retry configuration
+        if retry_config is None:
+            retry_config = self._load_retry_config()
+        self.retry_config = retry_config
+
+        # Initialize retry statistics
+        self.retry_stats = RetryStatistics()
+
         # Initialize cache manager with configurable TTL
         ttl_minutes = int(os.getenv("CONTEXT_CACHE_TTL_MINUTES", "30"))
         self.cache_manager = ContextCacheManager(ttl_minutes=ttl_minutes)
+
+    @staticmethod
+    def _load_retry_config() -> RetryConfig:
+        """Load retry configuration from environment variables"""
+        return RetryConfig(
+            max_attempts=int(os.getenv("GEMINI_RETRY_MAX_ATTEMPTS", "3")),
+            initial_delay=float(os.getenv("GEMINI_RETRY_INITIAL_DELAY", "1.0")),
+            max_delay=float(os.getenv("GEMINI_RETRY_MAX_DELAY", "60.0")),
+            exponential_base=float(os.getenv("GEMINI_RETRY_BASE", "2.0")),
+            enabled=os.getenv("GEMINI_RETRY_ENABLED", "true").lower() == "true"
+        )
 
     async def generate_content(
         self,
@@ -59,10 +85,66 @@ class GeminiClient:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None
     ) -> str:
-        """Generate content with Gemini CLI
+        """Generate content with Gemini CLI (with retry logic)
+
+        This is the public interface. It wraps _generate_content_impl with retry logic.
 
         Note: temperature and max_tokens are not currently supported by CLI
         and are included for interface compatibility only.
+        """
+        retry_count = 0
+        success = False
+        error_type = None
+
+        try:
+            result = await retry_async(
+                self._generate_content_impl,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                config=self.retry_config,
+                operation_name="gemini_generate_content"
+            )
+            success = True
+            return result
+
+        except NonRetryableError as e:
+            # Non-retryable error (auth, invalid request, etc.)
+            error_type = "non_retryable"
+            logger.error(f"Non-retryable error in Gemini CLI: {e}")
+            raise RuntimeError(str(e)) from e
+
+        except RetryableError as e:
+            # Max retries exceeded
+            retry_count = self.retry_config.max_attempts - 1
+            error_type = "max_retries_exceeded"
+            logger.error(f"Max retries exceeded for Gemini CLI: {e}")
+            raise RuntimeError(str(e)) from e
+
+        except Exception as e:
+            # Unexpected error
+            error_type = "unexpected"
+            logger.error(f"Unexpected error in Gemini CLI: {e}")
+            raise
+
+        finally:
+            # Record statistics
+            self.retry_stats.record_call(
+                success=success,
+                retries=retry_count,
+                error_type=error_type
+            )
+
+    async def _generate_content_impl(
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """Internal implementation of generate_content (without retry logic)
+
+        This is the actual implementation that gets retried. It contains all the
+        existing logic from the current generate_content method.
         """
         # Build command (prompt passed via stdin, not as argument)
         cmd = [
@@ -290,3 +372,16 @@ Please provide a detailed, structured response."""
             Dictionary with cache statistics including hit rate
         """
         return self.cache_manager.get_stats()
+
+    def get_retry_stats(self) -> dict:
+        """Get retry statistics for monitoring
+
+        Returns:
+            Dictionary with retry statistics including:
+            - total_calls: Total number of generate_content calls
+            - total_retries: Total retries across all calls
+            - success_rate: Success rate (0.0 to 1.0)
+            - average_retries: Average retries per call
+            - errors_by_type: Breakdown of errors by type
+        """
+        return self.retry_stats.to_dict()

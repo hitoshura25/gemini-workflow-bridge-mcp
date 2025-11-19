@@ -43,10 +43,10 @@ Address validation issues:
 ### 5. Save Specification
 Save to `specs/` directory with descriptive filename.
 """,
-        "command_content": """# /spec-only - Create specification document only (no implementation)
+        "command_content": """# /{COMMAND_NAME} - Create specification document only (no implementation)
 
 ## Usage
-/spec-only <feature_description>
+/{COMMAND_NAME} <feature_description>
 
 ## Description
 Creates a detailed specification document for a feature without implementing it. Uses the Gemini MCP Server to gather facts about the codebase and validate the specification for completeness.
@@ -59,7 +59,7 @@ Creates a detailed specification document for a feature without implementing it.
 5. Save specification to specs/ directory
 
 ## Example
-/spec-only Add user authentication with OAuth2 support
+/{COMMAND_NAME} Add user authentication with OAuth2 support
 """,
         "description": "Spec-only workflow for creating specifications without implementation"
     },
@@ -97,10 +97,10 @@ Implement a new feature with proper planning, validation, and testing.
 - Check code quality
 - Address issues
 """,
-        "command_content": """# /feature - Implement a new feature
+        "command_content": """# /{COMMAND_NAME} - Implement a new feature
 
 ## Usage
-/feature <feature_description>
+/{COMMAND_NAME} <feature_description>
 
 ## Description
 Implements a new feature following the Gemini workflow: spec creation, validation, implementation, and testing.
@@ -113,7 +113,7 @@ Implements a new feature following the Gemini workflow: spec creation, validatio
 5. Review and refine
 
 ## Example
-/feature Add REST API endpoint for user profile updates
+/{COMMAND_NAME} Add REST API endpoint for user profile updates
 """,
         "description": "Full feature implementation workflow with spec, code, and tests"
     },
@@ -151,10 +151,10 @@ Refactor existing code while maintaining functionality and following codebase pa
 - Add new tests if needed
 - Verify no regressions
 """,
-        "command_content": """# /refactor - Refactor existing code
+        "command_content": """# /{COMMAND_NAME} - Refactor existing code
 
 ## Usage
-/refactor <refactoring_description>
+/{COMMAND_NAME} <refactoring_description>
 
 ## Description
 Refactors existing code following best practices: analyze, plan, validate, execute, and verify.
@@ -167,7 +167,7 @@ Refactors existing code following best practices: analyze, plan, validate, execu
 5. Verify with tests and validation
 
 ## Example
-/refactor Extract authentication logic into separate service
+/{COMMAND_NAME} Extract authentication logic into separate service
 """,
         "description": "Refactoring workflow with analysis, planning, and validation"
     },
@@ -205,10 +205,10 @@ Conduct thorough code review using Gemini analysis tools.
 - Suggest improvements
 - Highlight risks
 """,
-        "command_content": """# /review - Review code changes
+        "command_content": """# /{COMMAND_NAME} - Review code changes
 
 ## Usage
-/review <code_location_or_description>
+/{COMMAND_NAME} <code_location_or_description>
 
 ## Description
 Conducts comprehensive code review using Gemini MCP tools to analyze patterns, consistency, and architecture.
@@ -221,7 +221,7 @@ Conducts comprehensive code review using Gemini MCP tools to analyze patterns, c
 5. Provide structured feedback
 
 ## Example
-/review Recent changes to authentication module
+/{COMMAND_NAME} Recent changes to authentication module
 """,
         "description": "Code review workflow using Gemini analysis tools"
     }
