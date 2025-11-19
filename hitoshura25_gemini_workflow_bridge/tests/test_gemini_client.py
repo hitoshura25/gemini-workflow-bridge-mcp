@@ -2,8 +2,10 @@
 Tests for GeminiClient error handling and response validation.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+
 from hitoshura25_gemini_workflow_bridge.gemini_client import GeminiClient
 
 

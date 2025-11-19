@@ -4,7 +4,6 @@ Core business logic for hitoshura25-gemini-workflow-bridge.
 MCP server that bridges Claude Code to Gemini CLI for workflow tasks like codebase analysis, specification creation, and code review
 """
 
-from typing import Any, Dict, List
 import hashlib
 import json
 import logging
@@ -12,9 +11,10 @@ import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from .gemini_client import GeminiClient
 from .codebase_loader import CodebaseLoader
+from .gemini_client import GeminiClient
 
 # Set up logger for info messages
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def _get_codebase_loader() -> CodebaseLoader:
     return _codebase_loader
 
 
-def _build_codebase_context(files_content: Dict[str, str], project_structure: str) -> str:
+def _build_codebase_context(files_content: dict[str, str], project_structure: str) -> str:
     """Build context string from codebase"""
     context_parts = [
         "# Project Structure",
@@ -60,7 +60,7 @@ def _build_codebase_context(files_content: Dict[str, str], project_structure: st
     return "\n".join(context_parts)
 
 
-def _generate_context_id(focus: str, files: Dict[str, str]) -> str:
+def _generate_context_id(focus: str, files: dict[str, str]) -> str:
     """Generate unique ID for this context"""
     content_hash = hashlib.sha256(
         json.dumps(sorted(files.keys())).encode()
@@ -76,7 +76,7 @@ async def analyze_codebase_with_gemini(
     directories: Any = None,
     file_patterns: Any = None,
     exclude_patterns: Any = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Analyze codebase using Gemini's 2M token context window
 
@@ -384,7 +384,7 @@ SPEC_TEMPLATES = {
 }
 
 
-def _extract_tasks(spec_content: str) -> List[Dict[str, Any]]:
+def _extract_tasks(spec_content: str) -> list[dict[str, Any]]:
     """Extract implementation tasks from spec"""
     tasks = []
     in_tasks_section = False
@@ -448,7 +448,7 @@ def _estimate_complexity(spec_content: str) -> str:
         return "low"
 
 
-def _format_cached_context(cached: Dict[str, Any]) -> str:
+def _format_cached_context(cached: dict[str, Any]) -> str:
     """Format cached context for prompt"""
     parts = [
         "# Previous Codebase Analysis",
@@ -469,7 +469,7 @@ async def create_specification_with_gemini(
     feature_description: str,
     spec_template: str = None,
     output_path: str = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate detailed technical specification using full codebase context.
 
@@ -576,7 +576,7 @@ def _get_git_diff() -> str:
         return "No git changes found"
 
 
-def _load_files(file_paths: List[str]) -> str:
+def _load_files(file_paths: list[str]) -> str:
     """Load specified files"""
     content_parts = []
 
@@ -592,7 +592,7 @@ def _load_files(file_paths: List[str]) -> str:
     return "\n".join(content_parts)
 
 
-def _format_review_markdown(review_data: Dict[str, Any], code: str) -> str:
+def _format_review_markdown(review_data: dict[str, Any], code: str) -> str:
     """Format review as markdown"""
     lines = [
         "# Code Review",
@@ -646,7 +646,7 @@ async def review_code_with_gemini(
     review_focus: Any = None,
     spec_path: str = None,
     output_path: str = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Comprehensive code review using Gemini.
 
@@ -782,7 +782,7 @@ async def generate_documentation_with_gemini(
     scope: str,
     output_path: str = None,
     include_examples: bool = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate comprehensive documentation with full codebase context.
 
@@ -864,7 +864,7 @@ async def ask_gemini(
     prompt: str,
     include_codebase_context: bool = None,
     temperature: float = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     General-purpose Gemini query with optional codebase context.
 

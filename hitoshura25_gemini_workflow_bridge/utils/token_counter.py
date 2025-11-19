@@ -1,7 +1,6 @@
 """Token counting utilities for measuring compression ratios."""
 
 import re
-from typing import Union
 
 
 def count_tokens(text: str) -> int:
@@ -31,8 +30,8 @@ def count_tokens(text: str) -> int:
 
 
 def estimate_compression_ratio(
-    input_text: Union[str, int],
-    output_text: Union[str, int]
+    input_text: str | int,
+    output_text: str | int
 ) -> float:
     """
     Calculate compression ratio between input and output.

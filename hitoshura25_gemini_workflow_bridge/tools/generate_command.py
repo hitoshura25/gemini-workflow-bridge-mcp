@@ -2,16 +2,19 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
+
+from ..resources import workflow_resources
 
 
 async def generate_slash_command(
     command_name: str,
     workflow_type: Literal["feature", "refactor", "debug", "review", "custom"],
     description: str,
-    steps: Optional[List[str]] = None,
-    save_to: Optional[str] = None
-) -> Dict[str, Any]:
+    steps: list[str] | None = None,
+    save_to: str | None = None,
+    prefix: str | None = None
+) -> dict[str, Any]:
     """
     Auto-generate Claude Code slash commands for common workflows (ultimate DX).
 
@@ -19,18 +22,33 @@ async def generate_slash_command(
     to automate complete workflows.
 
     Args:
-        command_name: Name of the command (e.g., "add-feature")
+        command_name: Base name of the command (e.g., "add-feature")
         workflow_type: Type of workflow
         description: Description of what the command does
         steps: Custom steps if workflow_type="custom"
         save_to: Where to save command file (default: .claude/commands/)
+        prefix: Command prefix (default from GEMINI_COMMAND_PREFIX env var)
 
     Returns:
-        Dictionary with command_path, command_content, and usage_example
+        Dictionary with command_path, command_content, usage_example, prefixed_name, and base_name
 
     Raises:
         Exception: If command generation fails due to file I/O errors or invalid parameters
     """
+    # Load prefix (use parameter if provided, otherwise env var)
+    cmd_prefix = prefix if prefix is not None else workflow_resources.command_prefix
+
+    # Apply prefix to command name
+    prefixed_command_name = f"{cmd_prefix}{command_name}"
+
+    # Validate steps parameter
+    if steps and workflow_type != "custom":
+        raise ValueError(
+            f"The 'steps' parameter is only supported for workflow_type='custom'. "
+            f"Got workflow_type='{workflow_type}' with steps provided. "
+            f"Either use workflow_type='custom' or omit the 'steps' parameter."
+        )
+
     # Define command templates
     command_templates = {
             "feature": """# /{command_name} - Complete Feature Implementation Workflow
@@ -160,32 +178,34 @@ This command performs automated code review using Gemini's large context window.
     if workflow_type == "custom" and steps:
         custom_steps = "\n".join([f"{i+1}. {step}" for i, step in enumerate(steps)])
         template = command_templates["custom"].format(
-            command_name=command_name,
+            command_name=prefixed_command_name,  # Use prefixed name
             description=description,
             custom_steps=custom_steps
         )
     else:
         template = command_templates[workflow_type].format(
-            command_name=command_name,
+            command_name=prefixed_command_name,  # Use prefixed name
             description=description
         )
 
-    # Determine save path
+    # Determine save path (use prefixed filename)
     if not save_to:
         command_dir = Path(os.getenv("DEFAULT_COMMAND_DIR", "./.claude/commands"))
         command_dir.mkdir(parents=True, exist_ok=True)
-        save_to = str(command_dir / f"{command_name}.md")
+        save_to = str(command_dir / f"{prefixed_command_name}.md")
 
     # Save command
     command_file = Path(save_to)
     command_file.parent.mkdir(parents=True, exist_ok=True)
     command_file.write_text(template)
 
-    # Generate usage example
-    usage_example = f"/{command_name} <description>"
+    # Generate usage example with prefix
+    usage_example = f"/{prefixed_command_name} <description>"
 
     return {
         "command_path": str(save_to),
         "command_content": template,
-        "usage_example": usage_example
+        "usage_example": usage_example,
+        "prefixed_name": prefixed_command_name,
+        "base_name": command_name
     }

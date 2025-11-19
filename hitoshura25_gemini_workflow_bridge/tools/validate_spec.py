@@ -2,20 +2,20 @@
 
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
-from ..utils.token_counter import count_tokens, format_token_stats
-from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
+from ..utils.prompt_loader import build_prompt_with_context, load_system_prompt
+from ..utils.token_counter import count_tokens, format_token_stats
 
 
 async def validate_against_codebase(
     spec_content: str,
-    validation_checks: List[str],
-    codebase_context: Optional[str] = None
-) -> Dict[str, Any]:
+    validation_checks: list[str],
+    codebase_context: str | None = None
+) -> dict[str, Any]:
     """
     Validate specification for completeness and accuracy against codebase.
 

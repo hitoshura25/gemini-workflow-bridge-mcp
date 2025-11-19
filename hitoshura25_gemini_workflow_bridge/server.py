@@ -10,22 +10,28 @@ Key Features:
 - Tools for querying, tracing, validating, and workflow generation
 """
 
-from mcp.server.fastmcp import FastMCP
-from typing import List
 import json
+
+from mcp.server.fastmcp import FastMCP
 
 from . import generator
 from .resources import WorkflowResources
+from .tool_registry import (
+    TOOL_REGISTRY,
+    ToolCategory,
+    get_tools_by_category,
+    search_tools_by_keyword,
+)
 from .tools import (
-    query_codebase,
-    find_code_by_intent,
-    trace_feature,
-    list_error_patterns,
-    validate_against_codebase,
     check_consistency,
+    find_code_by_intent,
     generate_feature_workflow,
     generate_slash_command,
-    setup_workflows
+    list_error_patterns,
+    query_codebase,
+    setup_workflows,
+    trace_feature,
+    validate_against_codebase,
 )
 from .utils import validate_enum_parameter
 
@@ -42,10 +48,10 @@ workflow_resources = WorkflowResources()
 
 @mcp.tool()
 async def query_codebase_tool(
-    questions: List[str],
+    questions: list[str],
     scope: str = None,
-    include_patterns: List[str] = None,
-    exclude_patterns: List[str] = None,
+    include_patterns: list[str] = None,
+    exclude_patterns: list[str] = None,
     max_tokens_per_answer: int = 300
 ) -> str:
     """Multi-question factual analysis with massive context compression
@@ -194,7 +200,7 @@ async def list_error_patterns_tool(
 @mcp.tool()
 async def validate_against_codebase_tool(
     spec_content: str,
-    validation_checks: List[str],
+    validation_checks: list[str],
     codebase_context: str = None
 ) -> str:
     """Validate specification for completeness and accuracy
@@ -302,7 +308,7 @@ async def generate_slash_command_tool(
     command_name: str,
     workflow_type: str,
     description: str,
-    steps: List[str] = None,
+    steps: list[str] = None,
     save_to: str = None
 ) -> str:
     """Auto-generate Claude Code slash commands for common workflows
@@ -341,7 +347,7 @@ async def generate_slash_command_tool(
 
 @mcp.tool()
 async def setup_workflows_tool(
-    workflows: List[str] = None,
+    workflows: list[str] = None,
     output_dir: str = None,
     overwrite: bool = False,
     include_commands: bool = True
@@ -448,6 +454,164 @@ async def ask_gemini(
 
     )
     return str(result)
+
+
+# ============================================================================
+# Tool Discovery (Progressive Disclosure)
+# ============================================================================
+
+@mcp.tool()
+async def discover_tools(
+    query: str | None = None,
+    category: str | None = None,
+    detail_level: str = "with_description"
+) -> str:
+    """Discover available MCP tools by search query or category
+
+    This tool implements progressive disclosure - instead of exposing all tools
+    upfront, Claude can discover relevant tools on-demand by intent or category.
+
+    Args:
+        query: Search query (keywords, intent, use case) - searches tool names,
+               descriptions, keywords, and use cases
+        category: Filter by category - options: "fact_extraction", "validation",
+                 "generation", "workflow", "general"
+        detail_level: How much detail to return:
+                     - "name_only": Just tool names (minimal tokens)
+                     - "with_description": Names + short descriptions (recommended)
+                     - "with_use_cases": Names + descriptions + use cases
+                     - "full": Complete tool information including keywords
+
+    Returns:
+        JSON string with discovered tools and their metadata
+
+    Examples:
+        # Find tools for codebase analysis
+        discover_tools(query="analyze codebase", detail_level="with_description")
+
+        # Find all validation tools
+        discover_tools(category="validation", detail_level="with_use_cases")
+
+        # Get all tool names only
+        discover_tools(detail_level="name_only")
+    """
+    # Validate that only one filter is provided
+    if query and category:
+        return json.dumps({
+            "error": "Cannot specify both 'query' and 'category' filters simultaneously",
+            "suggestion": "Use either 'query' for keyword search OR 'category' for filtering, but not both"
+        })
+
+    results = []
+
+    # Search by query
+    if query:
+        # Search keywords, descriptions, use cases
+        matched_tools = search_tools_by_keyword(query)
+        results.extend(matched_tools)
+
+    # Filter by category
+    elif category:
+        try:
+            cat_enum = ToolCategory(category)
+            results = get_tools_by_category(cat_enum)
+        except ValueError:
+            return json.dumps({
+                "error": f"Invalid category: {category}",
+                "valid_categories": [c.value for c in ToolCategory]
+            })
+
+    # No filter - return all tools
+    else:
+        results = list(TOOL_REGISTRY.values())
+
+    # Format results based on detail level
+    formatted_tools = []
+
+    for tool in results:
+        if detail_level == "name_only":
+            formatted_tools.append(tool["name"])
+
+        elif detail_level == "with_description":
+            formatted_tools.append({
+                "name": tool["name"],
+                "description": tool["short_description"],
+                "complexity": tool["complexity"]
+            })
+
+        elif detail_level == "with_use_cases":
+            formatted_tools.append({
+                "name": tool["name"],
+                "description": tool["short_description"],
+                "complexity": tool["complexity"],
+                "use_cases": tool["use_cases"],
+                "requires_codebase": tool["requires_codebase"]
+            })
+
+        elif detail_level == "full":
+            # Convert ToolCategory enum to string for JSON serialization
+            tool_dict = dict(tool)
+            tool_dict["category"] = tool["category"].value
+            formatted_tools.append(tool_dict)
+
+        else:
+            return json.dumps({
+                "error": f"Invalid detail_level: {detail_level}",
+                "valid_levels": ["name_only", "with_description", "with_use_cases", "full"]
+            })
+
+    return json.dumps({
+        "query": query,
+        "category": category,
+        "detail_level": detail_level,
+        "tool_count": len(formatted_tools),
+        "tools": formatted_tools
+    }, indent=2)
+
+
+@mcp.tool()
+async def get_tool_schema(tool_name: str) -> str:
+    """Get the full schema for a specific tool
+
+    After discovering a tool via discover_tools, use this to get the complete
+    tool schema including all parameters, types, and descriptions.
+
+    Note: For progressive disclosure, this returns basic documentation. The full
+    tool schema is automatically provided when you call the tool.
+
+    Args:
+        tool_name: Name of the tool to get schema for
+
+    Returns:
+        JSON string with tool information and usage guidance
+
+    Example:
+        # Discover tool first
+        discover_tools(query="codebase analysis")
+
+        # Get information for specific tool
+        get_tool_schema("query_codebase_tool")
+    """
+    if tool_name not in TOOL_REGISTRY:
+        return json.dumps({
+            "error": f"Tool not found: {tool_name}",
+            "available_tools": list(TOOL_REGISTRY.keys()),
+            "hint": "Use discover_tools() to search for tools"
+        })
+
+    metadata = TOOL_REGISTRY[tool_name]
+
+    return json.dumps({
+        "name": metadata["name"],
+        "category": metadata["category"].value,
+        "description": metadata["short_description"],
+        "complexity": metadata["complexity"],
+        "requires_codebase": metadata["requires_codebase"],
+        "use_cases": metadata["use_cases"],
+        "keywords": metadata["keywords"],
+        "usage_hint": f"Simply call {tool_name}() with appropriate parameters. "
+                     f"The full schema will be available when you use the tool."
+    }, indent=2)
 
 
 # Resource handlers

@@ -2,21 +2,21 @@
 
 import json
 import time
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
-from ..utils.token_counter import count_tokens, format_token_stats
-from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
+from ..utils.prompt_loader import build_prompt_with_context, load_system_prompt
+from ..utils.token_counter import count_tokens, format_token_stats
 
 
 async def find_code_by_intent(
     intent: str,
     return_format: Literal["summary_with_references", "detailed_with_snippets"] = "summary_with_references",
     max_files: int = 10,
-    scope: Optional[str] = None
-) -> Dict[str, Any]:
+    scope: str | None = None
+) -> dict[str, Any]:
     """
     Semantic search that returns summaries, not full code (filtering at the edge).
 

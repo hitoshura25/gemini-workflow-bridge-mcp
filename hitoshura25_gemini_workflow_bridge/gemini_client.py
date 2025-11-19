@@ -1,26 +1,33 @@
 """Gemini CLI client wrapper using subprocess"""
+import asyncio
 import json
 import logging
 import os
 import shutil
-import asyncio
 import subprocess
-from typing import Optional, Dict, Any
+from typing import Any
 
 from .cache_manager import ContextCacheManager
+from .utils.retry import (
+    NonRetryableError,
+    RetryableError,
+    RetryConfig,
+    RetryStatistics,
+    retry_async,
+)
 
 # Set up logger for debugging
 logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
-    """Wrapper for Gemini CLI with caching and context management
+    """Wrapper for Gemini CLI with caching, context management, and retry logic
 
     Uses the `gemini` CLI command instead of API calls.
     Requires Gemini CLI to be installed and authenticated.
     """
 
-    def __init__(self, model: str = "auto"):
+    def __init__(self, model: str = "auto", retry_config: RetryConfig | None = None):
         # Validate CLI is installed
         cli_path = shutil.which("gemini")
         if not cli_path:
@@ -49,20 +56,145 @@ class GeminiClient:
         self.model_name = model
         self.cli_path = cli_path
 
+        # Initialize retry configuration
+        if retry_config is None:
+            retry_config = self._load_retry_config()
+        self.retry_config = retry_config
+
+        # Initialize retry statistics
+        self.retry_stats = RetryStatistics()
+
         # Initialize cache manager with configurable TTL
         ttl_minutes = int(os.getenv("CONTEXT_CACHE_TTL_MINUTES", "30"))
         self.cache_manager = ContextCacheManager(ttl_minutes=ttl_minutes)
+
+    @staticmethod
+    def _load_retry_config() -> RetryConfig:
+        """Load retry configuration from environment variables with error handling"""
+        # Default values
+        defaults = {
+            "max_attempts": 3,
+            "initial_delay": 1.0,
+            "max_delay": 60.0,
+            "exponential_base": 2.0,
+            "enabled": True
+        }
+
+        # Parse max_attempts with error handling
+        try:
+            max_attempts = int(os.getenv("GEMINI_RETRY_MAX_ATTEMPTS", str(defaults["max_attempts"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_MAX_ATTEMPTS value, using default {defaults['max_attempts']}"
+            )
+            max_attempts = defaults["max_attempts"]
+
+        # Parse initial_delay with error handling
+        try:
+            initial_delay = float(os.getenv("GEMINI_RETRY_INITIAL_DELAY", str(defaults["initial_delay"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_INITIAL_DELAY value, using default {defaults['initial_delay']}"
+            )
+            initial_delay = defaults["initial_delay"]
+
+        # Parse max_delay with error handling
+        try:
+            max_delay = float(os.getenv("GEMINI_RETRY_MAX_DELAY", str(defaults["max_delay"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_MAX_DELAY value, using default {defaults['max_delay']}"
+            )
+            max_delay = defaults["max_delay"]
+
+        # Parse exponential_base with error handling
+        try:
+            exponential_base = float(os.getenv("GEMINI_RETRY_BASE", str(defaults["exponential_base"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_BASE value, using default {defaults['exponential_base']}"
+            )
+            exponential_base = defaults["exponential_base"]
+
+        # Parse enabled (boolean doesn't need try-except)
+        enabled = os.getenv("GEMINI_RETRY_ENABLED", "true").lower() == "true"
+
+        return RetryConfig(
+            max_attempts=max_attempts,
+            initial_delay=initial_delay,
+            max_delay=max_delay,
+            exponential_base=exponential_base,
+            enabled=enabled
+        )
 
     async def generate_content(
         self,
         prompt: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None
+        max_tokens: int | None = None
     ) -> str:
-        """Generate content with Gemini CLI
+        """Generate content with Gemini CLI (with retry logic)
+
+        This is the public interface. It wraps _generate_content_impl with retry logic.
 
         Note: temperature and max_tokens are not currently supported by CLI
         and are included for interface compatibility only.
+        """
+        retry_count = 0
+        success = False
+        error_type = None
+
+        try:
+            result, retry_count = await retry_async(
+                self._generate_content_impl,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                config=self.retry_config,
+                operation_name="gemini_generate_content"
+            )
+            success = True
+            return result
+
+        except NonRetryableError as e:
+            # Non-retryable error (auth, invalid request, etc.)
+            retry_count = e.retry_count
+            error_type = "non_retryable"
+            logger.error(f"Non-retryable error in Gemini CLI: {e}")
+            raise RuntimeError(str(e)) from e
+
+        except RetryableError as e:
+            # Max retries exceeded - all attempts failed
+            retry_count = e.retry_count
+            error_type = "max_retries_exceeded"
+            logger.error(f"Max retries exceeded for Gemini CLI: {e}")
+            raise RuntimeError(str(e)) from e
+
+        except Exception as e:
+            # Unexpected error (shouldn't happen, but handle gracefully)
+            # retry_count remains 0 from initialization since we can't determine actual retries
+            error_type = "unexpected"
+            logger.error(f"Unexpected error in Gemini CLI: {e}")
+            raise
+
+        finally:
+            # Record statistics
+            self.retry_stats.record_call(
+                success=success,
+                retries=retry_count,
+                error_type=error_type
+            )
+
+    async def _generate_content_impl(
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_tokens: int | None = None
+    ) -> str:
+        """Internal implementation of generate_content (without retry logic)
+
+        This is the actual implementation that gets retried. It contains all the
+        existing logic from the current generate_content method.
         """
         # Build command (prompt passed via stdin, not as argument)
         cmd = [
@@ -87,7 +219,7 @@ class GeminiClient:
                     process.communicate(input=prompt.encode('utf-8')),
                     timeout=300.0  # 5 minutes
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await process.kill()
                 await process.wait()
                 raise RuntimeError("Gemini CLI request timed out after 5 minutes")
@@ -251,7 +383,7 @@ Please provide a detailed, structured response."""
 
         return await self.generate_content(full_prompt, temperature)
 
-    def cache_context(self, context_id: str, context: Dict[str, Any]) -> None:
+    def cache_context(self, context_id: str, context: dict[str, Any]) -> None:
         """Cache context for reuse (automatically sets as current context).
 
         Args:
@@ -264,7 +396,7 @@ Please provide a detailed, structured response."""
             set_as_current=True  # Always set as current context
         )
 
-    def get_cached_context(self, context_id: str) -> Optional[Dict[str, Any]]:
+    def get_cached_context(self, context_id: str) -> dict[str, Any] | None:
         """Retrieve cached context (checks TTL expiration).
 
         Args:
@@ -275,7 +407,7 @@ Please provide a detailed, structured response."""
         """
         return self.cache_manager.get_cached_context(context_id)
 
-    def get_current_context(self) -> Optional[tuple[Dict[str, Any], str]]:
+    def get_current_context(self) -> tuple[dict[str, Any], str] | None:
         """Get the current active context.
 
         Returns:
@@ -283,10 +415,23 @@ Please provide a detailed, structured response."""
         """
         return self.cache_manager.get_current_context()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:
             Dictionary with cache statistics including hit rate
         """
         return self.cache_manager.get_stats()
+
+    def get_retry_stats(self) -> dict:
+        """Get retry statistics for monitoring
+
+        Returns:
+            Dictionary with retry statistics including:
+            - total_calls: Total number of generate_content calls
+            - total_retries: Total retries across all calls
+            - success_rate: Success rate (0.0 to 1.0)
+            - average_retries: Average retries per call
+            - errors_by_type: Breakdown of errors by type
+        """
+        return self.retry_stats.to_dict()

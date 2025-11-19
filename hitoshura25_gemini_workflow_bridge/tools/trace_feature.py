@@ -2,21 +2,21 @@
 
 import json
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
-from ..utils.token_counter import count_tokens, format_token_stats
-from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
+from ..utils.prompt_loader import build_prompt_with_context, load_system_prompt
+from ..utils.token_counter import count_tokens, format_token_stats
 
 
 async def trace_feature(
     feature: str,
-    entry_point: Optional[str] = None,
+    entry_point: str | None = None,
     max_depth: int = 10,
     include_data_flow: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Follow a feature's execution path through the codebase.
 
