@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from ..resources import workflow_resources
 
@@ -11,10 +11,10 @@ async def generate_slash_command(
     command_name: str,
     workflow_type: Literal["feature", "refactor", "debug", "review", "custom"],
     description: str,
-    steps: Optional[List[str]] = None,
-    save_to: Optional[str] = None,
-    prefix: Optional[str] = None
-) -> Dict[str, Any]:
+    steps: list[str] | None = None,
+    save_to: str | None = None,
+    prefix: str | None = None
+) -> dict[str, Any]:
     """
     Auto-generate Claude Code slash commands for common workflows (ultimate DX).
 

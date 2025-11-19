@@ -2,20 +2,20 @@
 
 import json
 import time
-from typing import Any, Dict, Literal
+from typing import Any, Literal
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
-from ..utils.token_counter import count_tokens, format_token_stats
-from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
+from ..utils.prompt_loader import build_prompt_with_context, load_system_prompt
+from ..utils.token_counter import count_tokens, format_token_stats
 
 
 async def list_error_patterns(
     pattern_type: Literal["error_handling", "logging", "async_patterns", "database_queries"],
     directory: str = ".",
     group_by: Literal["file", "pattern", "severity"] = "pattern"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Extract and categorize patterns across codebase (demonstrates "filtering at the edge").
 

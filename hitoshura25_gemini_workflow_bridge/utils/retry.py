@@ -1,9 +1,10 @@
 """Retry mechanism with exponential backoff for Gemini CLI calls"""
-from dataclasses import dataclass, field
-from typing import List, Optional, Callable, Any
 import asyncio
 import logging
 import random
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,8 @@ class RetryConfig:
     jitter_range: float = 0.2  # ±20% randomness
 
     # Error classification
-    retryable_error_patterns: List[str] = field(default_factory=list)
-    non_retryable_error_patterns: List[str] = field(default_factory=list)
+    retryable_error_patterns: list[str] = field(default_factory=list)
+    non_retryable_error_patterns: list[str] = field(default_factory=list)
 
     # Feature flag
     enabled: bool = True
@@ -136,7 +137,7 @@ class RetryStatistics:
             return 0.0
         return self.total_retries / self.total_calls
 
-    def record_call(self, success: bool, retries: int, error_type: Optional[str] = None):
+    def record_call(self, success: bool, retries: int, error_type: str | None = None):
         """Record a call result"""
         self.total_calls += 1
         self.total_retries += retries
@@ -174,10 +175,10 @@ class NonRetryableError(Exception):
 async def retry_async(
     func: Callable,
     *args,
-    config: Optional[RetryConfig] = None,
+    config: RetryConfig | None = None,
     operation_name: str = "operation",
     **kwargs
-) -> Any:
+) -> tuple[Any, int]:
     """Execute async function with retry logic and exponential backoff
 
     Args:
@@ -188,14 +189,14 @@ async def retry_async(
         **kwargs: Keyword arguments for func
 
     Returns:
-        Result from func
+        Tuple of (result from func, number of retries performed)
 
     Raises:
         NonRetryableError: If error is not retryable
         RetryableError: If max retries exceeded
 
     Example:
-        result = await retry_async(
+        result, retry_count = await retry_async(
             gemini_client._generate_content_impl,
             prompt="What is 2+2?",
             config=RetryConfig(max_attempts=3),
@@ -207,7 +208,8 @@ async def retry_async(
 
     if not config.enabled:
         # Retry disabled, execute directly
-        return await func(*args, **kwargs)
+        result = await func(*args, **kwargs)
+        return result, 0
 
     last_exception = None
     retry_count = 0
@@ -222,7 +224,7 @@ async def retry_async(
                     f"{operation_name}: Succeeded after {retry_count} retry(ies)"
                 )
 
-            return result
+            return result, retry_count
 
         except Exception as e:
             last_exception = e

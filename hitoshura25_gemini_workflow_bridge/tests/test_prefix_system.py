@@ -2,14 +2,14 @@
 Tests for command prefix system.
 """
 
-import pytest
 import os
-from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from hitoshura25_gemini_workflow_bridge.resources import WorkflowResources
-from hitoshura25_gemini_workflow_bridge.tools.setup_workflows import setup_workflows
 from hitoshura25_gemini_workflow_bridge.tools.generate_command import generate_slash_command
+from hitoshura25_gemini_workflow_bridge.tools.setup_workflows import setup_workflows
 
 
 class TestPrefixConfiguration:
@@ -140,7 +140,7 @@ class TestSetupWorkflowsWithPrefix:
     @pytest.mark.asyncio
     async def test_command_content_uses_prefix(self, tmp_path):
         """Test command file content uses prefixed command name"""
-        result = await setup_workflows(
+        await setup_workflows(
             workflows=["spec-only"],
             output_dir=str(tmp_path),
             overwrite=True,

@@ -1,12 +1,12 @@
 """Utilities for input validation."""
 
-from typing import Any, List
+from typing import Any
 
 
 def validate_enum_parameter(
     param_value: Any,
     param_name: str,
-    valid_values: List[str]
+    valid_values: list[str]
 ) -> tuple[bool, str]:
     """
     Validate that a parameter value is within allowed enum values.

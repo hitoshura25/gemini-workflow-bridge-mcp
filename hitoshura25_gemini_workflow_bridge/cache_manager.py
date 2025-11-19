@@ -3,7 +3,7 @@ Context cache manager with TTL support for automatic context reuse.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class ContextCacheManager:
@@ -23,14 +23,14 @@ class ContextCacheManager:
             ttl_minutes: Time-to-live for cached contexts in minutes
         """
         self.ttl_minutes = ttl_minutes
-        self.cache: Dict[str, Dict[str, Any]] = {}
-        self.current_context_id: Optional[str] = None
+        self.cache: dict[str, dict[str, Any]] = {}
+        self.current_context_id: str | None = None
         self.stats = {"hits": 0, "misses": 0, "expirations": 0}
 
     def cache_context(
         self,
         context_id: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         set_as_current: bool = True
     ) -> None:
         """Cache context with timestamp.
@@ -50,7 +50,7 @@ class ContextCacheManager:
         if set_as_current:
             self.current_context_id = context_id
 
-    def get_cached_context(self, context_id: str) -> Optional[Dict[str, Any]]:
+    def get_cached_context(self, context_id: str) -> dict[str, Any] | None:
         """Retrieve cached context if not expired.
 
         Args:
@@ -96,7 +96,7 @@ class ContextCacheManager:
         # Check expiration without side effects
         return datetime.now() <= self.cache[context_id]["expires_at"]
 
-    def get_current_context(self) -> Optional[tuple[Dict[str, Any], str]]:
+    def get_current_context(self) -> tuple[dict[str, Any], str] | None:
         """Get the current active context.
 
         Returns:
@@ -160,7 +160,7 @@ class ContextCacheManager:
 
         return len(expired)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:

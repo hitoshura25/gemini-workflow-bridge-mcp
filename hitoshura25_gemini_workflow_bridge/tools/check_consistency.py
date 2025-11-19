@@ -2,20 +2,20 @@
 
 import json
 import time
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
-from ..utils.token_counter import count_tokens, format_token_stats
-from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
+from ..utils.prompt_loader import build_prompt_with_context, load_system_prompt
+from ..utils.token_counter import count_tokens, format_token_stats
 
 
 async def check_consistency(
     focus: Literal["naming_conventions", "error_handling", "testing", "api_design", "all"],
     new_code_or_spec: str,
-    scope: Optional[str] = None
-) -> Dict[str, Any]:
+    scope: str | None = None
+) -> dict[str, Any]:
     """
     Verify new code or spec follows existing codebase patterns.
 

@@ -3,19 +3,19 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
 
 
 async def generate_feature_workflow(
     feature_description: str,
     workflow_style: Literal["interactive", "automated", "template"] = "interactive",
-    save_to: Optional[str] = None,
+    save_to: str | None = None,
     include_validation_steps: bool = True
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create a complete, executable workflow for a feature (implements "progressive disclosure").
 

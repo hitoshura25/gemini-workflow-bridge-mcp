@@ -1,19 +1,19 @@
 """Gemini CLI client wrapper using subprocess"""
+import asyncio
 import json
 import logging
 import os
 import shutil
-import asyncio
 import subprocess
-from typing import Optional, Dict, Any
+from typing import Any
 
 from .cache_manager import ContextCacheManager
 from .utils.retry import (
-    retry_async,
+    NonRetryableError,
+    RetryableError,
     RetryConfig,
     RetryStatistics,
-    RetryableError,
-    NonRetryableError,
+    retry_async,
 )
 
 # Set up logger for debugging
@@ -27,7 +27,7 @@ class GeminiClient:
     Requires Gemini CLI to be installed and authenticated.
     """
 
-    def __init__(self, model: str = "auto", retry_config: Optional[RetryConfig] = None):
+    def __init__(self, model: str = "auto", retry_config: RetryConfig | None = None):
         # Validate CLI is installed
         cli_path = shutil.which("gemini")
         if not cli_path:
@@ -83,7 +83,7 @@ class GeminiClient:
         self,
         prompt: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None
+        max_tokens: int | None = None
     ) -> str:
         """Generate content with Gemini CLI (with retry logic)
 
@@ -97,7 +97,7 @@ class GeminiClient:
         error_type = None
 
         try:
-            result = await retry_async(
+            result, retry_count = await retry_async(
                 self._generate_content_impl,
                 prompt=prompt,
                 temperature=temperature,
@@ -115,7 +115,8 @@ class GeminiClient:
             raise RuntimeError(str(e)) from e
 
         except RetryableError as e:
-            # Max retries exceeded
+            # Max retries exceeded - all attempts failed
+            # retry_count = max_attempts - 1 (since first attempt is not a retry)
             retry_count = self.retry_config.max_attempts - 1
             error_type = "max_retries_exceeded"
             logger.error(f"Max retries exceeded for Gemini CLI: {e}")
@@ -139,7 +140,7 @@ class GeminiClient:
         self,
         prompt: str,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None
+        max_tokens: int | None = None
     ) -> str:
         """Internal implementation of generate_content (without retry logic)
 
@@ -169,7 +170,7 @@ class GeminiClient:
                     process.communicate(input=prompt.encode('utf-8')),
                     timeout=300.0  # 5 minutes
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await process.kill()
                 await process.wait()
                 raise RuntimeError("Gemini CLI request timed out after 5 minutes")
@@ -333,7 +334,7 @@ Please provide a detailed, structured response."""
 
         return await self.generate_content(full_prompt, temperature)
 
-    def cache_context(self, context_id: str, context: Dict[str, Any]) -> None:
+    def cache_context(self, context_id: str, context: dict[str, Any]) -> None:
         """Cache context for reuse (automatically sets as current context).
 
         Args:
@@ -346,7 +347,7 @@ Please provide a detailed, structured response."""
             set_as_current=True  # Always set as current context
         )
 
-    def get_cached_context(self, context_id: str) -> Optional[Dict[str, Any]]:
+    def get_cached_context(self, context_id: str) -> dict[str, Any] | None:
         """Retrieve cached context (checks TTL expiration).
 
         Args:
@@ -357,7 +358,7 @@ Please provide a detailed, structured response."""
         """
         return self.cache_manager.get_cached_context(context_id)
 
-    def get_current_context(self) -> Optional[tuple[Dict[str, Any], str]]:
+    def get_current_context(self) -> tuple[dict[str, Any], str] | None:
         """Get the current active context.
 
         Returns:
@@ -365,7 +366,7 @@ Please provide a detailed, structured response."""
         """
         return self.cache_manager.get_current_context()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:

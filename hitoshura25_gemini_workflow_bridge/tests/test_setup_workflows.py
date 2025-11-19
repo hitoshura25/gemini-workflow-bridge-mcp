@@ -2,10 +2,12 @@
 Tests for setup_workflows tool.
 """
 
-import pytest
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
+
+import pytest
+
 from hitoshura25_gemini_workflow_bridge.tools.setup_workflows import setup_workflows
 
 
@@ -323,7 +325,7 @@ async def test_environment_variable_support():
         os.environ["DEFAULT_COMMAND_DIR"] = "custom/commands"
 
         # Disable prefix for backward compatibility with existing tests
-        result = await setup_workflows(
+        await setup_workflows(
             workflows=["spec-only"],
             output_dir=temp_dir,
             command_prefix="",

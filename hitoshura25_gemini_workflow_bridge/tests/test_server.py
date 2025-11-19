@@ -2,11 +2,11 @@
 Tests for MCP server implementation.
 """
 
-import pytest
 from unittest.mock import patch
-from hitoshura25_gemini_workflow_bridge.server import mcp
-from hitoshura25_gemini_workflow_bridge.server import analyze_codebase_with_gemini
-from hitoshura25_gemini_workflow_bridge.server import ask_gemini
+
+import pytest
+
+from hitoshura25_gemini_workflow_bridge.server import analyze_codebase_with_gemini, ask_gemini, mcp
 
 
 @pytest.mark.asyncio
@@ -129,9 +129,10 @@ async def test_resource_handlers():
 @patch('hitoshura25_gemini_workflow_bridge.tools.validate_spec.GeminiClient')
 async def test_validate_against_codebase_response_format(mock_gemini_client_class):
     """Test that validate_against_codebase returns the expected response format with new fields."""
-    from hitoshura25_gemini_workflow_bridge.tools.validate_spec import validate_against_codebase
-    from unittest.mock import AsyncMock
     import json
+    from unittest.mock import AsyncMock
+
+    from hitoshura25_gemini_workflow_bridge.tools.validate_spec import validate_against_codebase
 
     # Mock the Gemini response with the new format
     mock_gemini_response = {

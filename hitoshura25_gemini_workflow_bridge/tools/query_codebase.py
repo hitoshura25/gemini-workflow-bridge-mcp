@@ -2,22 +2,22 @@
 
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
-from ..utils.token_counter import count_tokens, format_token_stats
-from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..gemini_client import GeminiClient
 from ..utils.json_parser import parse_json_response
+from ..utils.prompt_loader import build_prompt_with_context, load_system_prompt
+from ..utils.token_counter import count_tokens, format_token_stats
 
 
 async def query_codebase(
-    questions: List[str],
-    scope: Optional[str] = None,
-    include_patterns: Optional[List[str]] = None,
-    exclude_patterns: Optional[List[str]] = None,
+    questions: list[str],
+    scope: str | None = None,
+    include_patterns: list[str] | None = None,
+    exclude_patterns: list[str] | None = None,
     max_tokens_per_answer: int = 300
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Multi-question factual analysis with massive context compression.
 

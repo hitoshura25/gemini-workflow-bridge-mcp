@@ -2,20 +2,20 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from .workflow_templates import WORKFLOW_TEMPLATES
 from ..resources import workflow_resources
+from .workflow_templates import WORKFLOW_TEMPLATES
 
 
 async def setup_workflows(
-    workflows: Optional[List[str]] = None,
-    output_dir: Optional[str] = None,
+    workflows: list[str] | None = None,
+    output_dir: str | None = None,
     overwrite: bool = False,
     include_commands: bool = True,
-    command_prefix: Optional[str] = None,
-    workflow_prefix: Optional[str] = None
-) -> Dict[str, Any]:
+    command_prefix: str | None = None,
+    workflow_prefix: str | None = None
+) -> dict[str, Any]:
     """
     Set up recommended workflow files and slash commands for the Gemini MCP Server.
 

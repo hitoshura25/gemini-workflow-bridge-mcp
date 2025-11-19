@@ -2,18 +2,19 @@
 Tests for progressive tool disclosure.
 """
 
-import pytest
 import json
 
+import pytest
+
+from hitoshura25_gemini_workflow_bridge.server import discover_tools, get_tool_schema
 from hitoshura25_gemini_workflow_bridge.tool_registry import (
     TOOL_REGISTRY,
     ToolCategory,
-    get_tool_metadata,
     get_all_tool_names,
+    get_tool_metadata,
     get_tools_by_category,
     search_tools_by_keyword,
 )
-from hitoshura25_gemini_workflow_bridge.server import discover_tools, get_tool_schema
 
 
 class TestToolRegistry:

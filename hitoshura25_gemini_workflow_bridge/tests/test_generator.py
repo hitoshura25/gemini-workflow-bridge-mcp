@@ -2,14 +2,16 @@
 Tests for core business logic.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+
 from hitoshura25_gemini_workflow_bridge.generator import (
     analyze_codebase_with_gemini,
-    create_specification_with_gemini,
-    review_code_with_gemini,
-    generate_documentation_with_gemini,
     ask_gemini,
+    create_specification_with_gemini,
+    generate_documentation_with_gemini,
+    review_code_with_gemini,
 )
 
 
@@ -422,7 +424,7 @@ async def test_cli_timeout():
             async def mock_wait_for(coro, timeout):
                 # Close the coroutine to avoid unawaited coroutine warning
                 coro.close()
-                raise asyncio.TimeoutError()
+                raise TimeoutError()
 
             with patch('asyncio.wait_for', side_effect=mock_wait_for):
                 with patch('asyncio.create_subprocess_exec') as mock_exec:

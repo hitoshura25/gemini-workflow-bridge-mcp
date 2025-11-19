@@ -10,31 +10,30 @@ Key Features:
 - Tools for querying, tracing, validating, and workflow generation
 """
 
-from mcp.server.fastmcp import FastMCP
-from typing import List, Optional
 import json
-import os
+
+from mcp.server.fastmcp import FastMCP
 
 from . import generator
 from .resources import WorkflowResources
-from .tools import (
-    query_codebase,
-    find_code_by_intent,
-    trace_feature,
-    list_error_patterns,
-    validate_against_codebase,
-    check_consistency,
-    generate_feature_workflow,
-    generate_slash_command,
-    setup_workflows
-)
-from .utils import validate_enum_parameter
 from .tool_registry import (
     TOOL_REGISTRY,
-    search_tools_by_keyword,
+    ToolCategory,
     get_tools_by_category,
-    ToolCategory
+    search_tools_by_keyword,
 )
+from .tools import (
+    check_consistency,
+    find_code_by_intent,
+    generate_feature_workflow,
+    generate_slash_command,
+    list_error_patterns,
+    query_codebase,
+    setup_workflows,
+    trace_feature,
+    validate_against_codebase,
+)
+from .utils import validate_enum_parameter
 
 # Initialize FastMCP server
 mcp = FastMCP("hitoshura25_gemini_workflow_bridge")
@@ -49,10 +48,10 @@ workflow_resources = WorkflowResources()
 
 @mcp.tool()
 async def query_codebase_tool(
-    questions: List[str],
+    questions: list[str],
     scope: str = None,
-    include_patterns: List[str] = None,
-    exclude_patterns: List[str] = None,
+    include_patterns: list[str] = None,
+    exclude_patterns: list[str] = None,
     max_tokens_per_answer: int = 300
 ) -> str:
     """Multi-question factual analysis with massive context compression
@@ -201,7 +200,7 @@ async def list_error_patterns_tool(
 @mcp.tool()
 async def validate_against_codebase_tool(
     spec_content: str,
-    validation_checks: List[str],
+    validation_checks: list[str],
     codebase_context: str = None
 ) -> str:
     """Validate specification for completeness and accuracy
@@ -309,7 +308,7 @@ async def generate_slash_command_tool(
     command_name: str,
     workflow_type: str,
     description: str,
-    steps: List[str] = None,
+    steps: list[str] = None,
     save_to: str = None
 ) -> str:
     """Auto-generate Claude Code slash commands for common workflows
@@ -348,7 +347,7 @@ async def generate_slash_command_tool(
 
 @mcp.tool()
 async def setup_workflows_tool(
-    workflows: List[str] = None,
+    workflows: list[str] = None,
     output_dir: str = None,
     overwrite: bool = False,
     include_commands: bool = True
@@ -463,8 +462,8 @@ async def ask_gemini(
 
 @mcp.tool()
 async def discover_tools(
-    query: Optional[str] = None,
-    category: Optional[str] = None,
+    query: str | None = None,
+    category: str | None = None,
     detail_level: str = "with_description"
 ) -> str:
     """Discover available MCP tools by search query or category

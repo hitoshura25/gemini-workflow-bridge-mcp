@@ -1,8 +1,9 @@
 """Codebase loading utilities"""
 from pathlib import Path
-from typing import List, Optional, Dict
-import pathspec
+
 import git
+import pathspec
+
 
 class CodebaseLoader:
     """Load and prepare codebase for analysis"""
@@ -11,7 +12,7 @@ class CodebaseLoader:
         self.root_dir = Path(root_dir).resolve()
         self.gitignore_spec = self._load_gitignore()
 
-    def _load_gitignore(self) -> Optional[pathspec.PathSpec]:
+    def _load_gitignore(self) -> pathspec.PathSpec | None:
         """Load .gitignore patterns"""
         gitignore_path = self.root_dir / ".gitignore"
         if gitignore_path.exists():
@@ -22,10 +23,10 @@ class CodebaseLoader:
 
     def load_files(
         self,
-        file_patterns: List[str] = ["*.py", "*.js", "*.ts", "*.java"],
-        exclude_patterns: List[str] = [],
-        directories: Optional[List[str]] = None
-    ) -> Dict[str, str]:
+        file_patterns: list[str] = ["*.py", "*.js", "*.ts", "*.java"],
+        exclude_patterns: list[str] = [],
+        directories: list[str] | None = None
+    ) -> dict[str, str]:
         """Load files matching patterns"""
         files_content = {}
 
@@ -45,7 +46,7 @@ class CodebaseLoader:
                         continue
 
                     try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                        with open(file_path, encoding='utf-8') as f:
                             relative_path = file_path.relative_to(self.root_dir)
                             files_content[str(relative_path)] = f.read()
                     except (UnicodeDecodeError, PermissionError):
@@ -54,7 +55,7 @@ class CodebaseLoader:
 
         return files_content
 
-    def _should_exclude(self, file_path: Path, exclude_patterns: List[str]) -> bool:
+    def _should_exclude(self, file_path: Path, exclude_patterns: list[str]) -> bool:
         """Check if file should be excluded"""
         for pattern in exclude_patterns:
             if pattern in str(file_path):
@@ -71,7 +72,7 @@ class CodebaseLoader:
             # Not a git repo, fall back to directory listing
             return self._build_tree_from_dir()
 
-    def _build_tree(self, files: List[str]) -> str:
+    def _build_tree(self, files: list[str]) -> str:
         """Build ASCII tree from file list"""
         tree = {}
         for file in files:

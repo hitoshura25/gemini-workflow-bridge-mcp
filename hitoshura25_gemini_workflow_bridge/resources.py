@@ -1,8 +1,8 @@
 """MCP resource handlers for workflow artifacts"""
-from pathlib import Path
-from typing import Dict, Any, List
-import os
 import logging
+import os
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class WorkflowResources:
                 f"(e.g., 'gemini-' instead of 'gemini')."
             )
 
-    def list_resources(self) -> List[str]:
+    def list_resources(self) -> list[str]:
         """List all available resources"""
         resources = []
 
@@ -78,7 +78,7 @@ class WorkflowResources:
 
         return resources
 
-    def read_resource(self, uri: str) -> Dict[str, Any]:
+    def read_resource(self, uri: str) -> dict[str, Any]:
         """Read a resource by URI"""
         if uri.startswith("workflow://specs/"):
             name = uri.replace("workflow://specs/", "")

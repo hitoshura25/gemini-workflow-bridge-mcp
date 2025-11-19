@@ -2,15 +2,16 @@
 Tests for retry mechanism with exponential backoff.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch
 import asyncio
+from unittest.mock import AsyncMock
+
+import pytest
 
 from hitoshura25_gemini_workflow_bridge.utils.retry import (
+    NonRetryableError,
+    RetryableError,
     RetryConfig,
     RetryStatistics,
-    RetryableError,
-    NonRetryableError,
     retry_async,
 )
 
@@ -186,9 +187,10 @@ class TestRetryAsync:
         mock_func = AsyncMock(return_value="success")
         config = RetryConfig(max_attempts=3)
 
-        result = await retry_async(mock_func, config=config, operation_name="test")
+        result, retry_count = await retry_async(mock_func, config=config, operation_name="test")
 
         assert result == "success"
+        assert retry_count == 0
         assert mock_func.call_count == 1
 
     @pytest.mark.asyncio
@@ -211,9 +213,10 @@ class TestRetryAsync:
         ])
         config = RetryConfig(max_attempts=3, initial_delay=0.01)
 
-        result = await retry_async(mock_func, config=config, operation_name="test")
+        result, retry_count = await retry_async(mock_func, config=config, operation_name="test")
 
         assert result == "success"
+        assert retry_count == 1
         assert mock_func.call_count == 2
 
     @pytest.mark.asyncio
@@ -226,9 +229,10 @@ class TestRetryAsync:
         ])
         config = RetryConfig(max_attempts=3, initial_delay=0.01)
 
-        result = await retry_async(mock_func, config=config, operation_name="test")
+        result, retry_count = await retry_async(mock_func, config=config, operation_name="test")
 
         assert result == "success"
+        assert retry_count == 2
         assert mock_func.call_count == 3
 
     @pytest.mark.asyncio
@@ -264,10 +268,11 @@ class TestRetryAsync:
         config = RetryConfig(max_attempts=3, initial_delay=0.1, jitter=False)
 
         start_time = asyncio.get_event_loop().time()
-        result = await retry_async(mock_func, config=config, operation_name="test")
+        result, retry_count = await retry_async(mock_func, config=config, operation_name="test")
         end_time = asyncio.get_event_loop().time()
 
         assert result == "success"
+        assert retry_count == 1
         # Should have waited at least initial_delay
         assert (end_time - start_time) >= 0.1
 
@@ -277,7 +282,7 @@ class TestRetryAsync:
         mock_func = AsyncMock(return_value="success")
         config = RetryConfig(max_attempts=3)
 
-        result = await retry_async(
+        result, retry_count = await retry_async(
             mock_func,
             config=config,
             operation_name="test",
@@ -286,4 +291,5 @@ class TestRetryAsync:
         )
 
         assert result == "success"
+        assert retry_count == 0
         mock_func.assert_called_once_with(prompt="test prompt", temperature=0.7)

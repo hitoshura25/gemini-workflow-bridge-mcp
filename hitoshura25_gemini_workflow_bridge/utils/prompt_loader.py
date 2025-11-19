@@ -1,7 +1,6 @@
 """Utilities for loading system prompts from files."""
 
 from pathlib import Path
-from typing import Optional
 
 
 def load_system_prompt(prompt_name: str) -> str:
@@ -44,7 +43,7 @@ def load_system_prompt(prompt_name: str) -> str:
 def build_prompt_with_context(
     system_prompt: str,
     user_task: str,
-    context: Optional[str] = None
+    context: str | None = None
 ) -> str:
     """
     Build a complete prompt with system instructions, context, and task.

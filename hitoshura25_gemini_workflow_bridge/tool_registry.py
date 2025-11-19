@@ -1,7 +1,7 @@
 """Central registry for all MCP tools with metadata for progressive disclosure"""
 
-from typing import Dict, List, Optional, TypedDict
 from enum import Enum
+from typing import TypedDict
 
 
 class ToolCategory(Enum):
@@ -18,14 +18,14 @@ class ToolMetadata(TypedDict):
     name: str
     category: ToolCategory
     short_description: str  # One-line summary (for search results)
-    keywords: List[str]     # Searchable keywords
-    use_cases: List[str]    # Common use cases (for search)
+    keywords: list[str]     # Searchable keywords
+    use_cases: list[str]    # Common use cases (for search)
     complexity: str         # "simple", "moderate", "complex"
     requires_codebase: bool # Whether tool needs codebase context
 
 
 # Tool Registry: Maps tool names to their metadata
-TOOL_REGISTRY: Dict[str, ToolMetadata] = {
+TOOL_REGISTRY: dict[str, ToolMetadata] = {
     "query_codebase_tool": {
         "name": "query_codebase_tool",
         "category": ToolCategory.FACT_EXTRACTION,
@@ -226,17 +226,17 @@ TOOL_REGISTRY: Dict[str, ToolMetadata] = {
 }
 
 
-def get_tool_metadata(tool_name: str) -> Optional[ToolMetadata]:
+def get_tool_metadata(tool_name: str) -> ToolMetadata | None:
     """Get metadata for a specific tool"""
     return TOOL_REGISTRY.get(tool_name)
 
 
-def get_all_tool_names() -> List[str]:
+def get_all_tool_names() -> list[str]:
     """Get list of all tool names"""
     return list(TOOL_REGISTRY.keys())
 
 
-def get_tools_by_category(category: ToolCategory) -> List[ToolMetadata]:
+def get_tools_by_category(category: ToolCategory) -> list[ToolMetadata]:
     """Get all tools in a specific category"""
     return [
         metadata for metadata in TOOL_REGISTRY.values()
@@ -244,7 +244,7 @@ def get_tools_by_category(category: ToolCategory) -> List[ToolMetadata]:
     ]
 
 
-def search_tools_by_keyword(keyword: str) -> List[ToolMetadata]:
+def search_tools_by_keyword(keyword: str) -> list[ToolMetadata]:
     """Search tools by keyword (case-insensitive, partial match)"""
     keyword_lower = keyword.lower()
     results = []
