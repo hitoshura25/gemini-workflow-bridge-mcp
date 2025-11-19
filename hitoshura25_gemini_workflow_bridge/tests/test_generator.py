@@ -445,7 +445,7 @@ async def test_cli_json_parsing():
             client = GeminiClient()
 
             # Mock subprocess returning invalid JSON
-            async def mock_communicate():
+            async def mock_communicate(input=None):
                 return (b"This is not JSON", b"")
 
             with patch('asyncio.create_subprocess_exec') as mock_exec:

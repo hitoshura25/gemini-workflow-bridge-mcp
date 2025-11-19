@@ -8,6 +8,7 @@ from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
 from ..utils.token_counter import count_tokens, format_token_stats
 from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..utils.json_parser import parse_json_response
 
 
 async def find_code_by_intent(
@@ -100,9 +101,9 @@ Provide your response as JSON with this structure:
         temperature=0.3
     )
 
-    # Parse response
+    # Parse response (handles markdown-wrapped JSON)
     try:
-        result = json.loads(response)
+        result = parse_json_response(response)
     except json.JSONDecodeError as e:
         # If Gemini returns non-JSON response, fail fast
         raise ValueError(f"Failed to parse Gemini response as JSON: {str(e)}. Response: {response[:200]}") from e

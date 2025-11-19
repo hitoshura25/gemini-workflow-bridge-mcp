@@ -64,26 +64,27 @@ class GeminiClient:
         Note: temperature and max_tokens are not currently supported by CLI
         and are included for interface compatibility only.
         """
-        # Build command
+        # Build command (prompt passed via stdin, not as argument)
         cmd = [
             self.cli_path,
             "--output-format", "json",
-            "-m", self.model_name,
-            prompt
+            "-m", self.model_name
         ]
 
         try:
-            # Execute CLI command asynchronously
+            # Execute CLI command asynchronously with stdin support
             process = await asyncio.create_subprocess_exec(
                 *cmd,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
 
             # Wait for completion with timeout (5 minutes)
+            # Pass prompt via stdin to avoid shell escaping issues
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
+                    process.communicate(input=prompt.encode('utf-8')),
                     timeout=300.0  # 5 minutes
                 )
             except asyncio.TimeoutError:
