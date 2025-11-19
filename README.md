@@ -164,6 +164,13 @@ validate_against_codebase_tool(
 | `generate_feature_workflow_tool()` | Generate executable workflows | Progressive disclosure |
 | `generate_slash_command_tool()` | Create custom slash commands | Automate common tasks |
 
+### 🔍 Tier 4: Tool Discovery
+
+| Tool | Purpose | Quick Example |
+|------|---------|---------------|
+| `discover_tools()` | Find tools by keyword, category, or use case | `query="validation"` or `category="fact_extraction"` |
+| `get_tool_schema()` | Get detailed schema for a specific tool | `tool_name="query_codebase_tool"` |
+
 ## Example: Complete Feature Implementation
 
 ```
@@ -203,10 +210,23 @@ Result: ✅ A-grade spec, 61% token savings, 3.5 minutes
 Key environment variables (see `.env.example` for all):
 
 ```bash
+# Context & Compression
 CONTEXT_CACHE_TTL_MINUTES=30     # Cache duration
 MAX_TOKENS_PER_ANSWER=300        # Compression target
 TARGET_COMPRESSION_RATIO=100     # Aim for 100:1
 GEMINI_MODEL=auto                # or specific model
+
+# Retry Mechanism (Exponential Backoff)
+GEMINI_RETRY_MAX_ATTEMPTS=3      # Total attempts (1 initial + 2 retries)
+GEMINI_RETRY_INITIAL_DELAY=1.0   # Starting delay in seconds
+GEMINI_RETRY_MAX_DELAY=60.0      # Maximum delay in seconds
+GEMINI_RETRY_BASE=2.0            # Exponential backoff multiplier
+GEMINI_RETRY_ENABLED=true        # Enable/disable retry mechanism
+
+# Command/Workflow Prefixes (Namespace Management)
+GEMINI_COMMAND_PREFIX=gemini-    # Prefix for generated commands
+GEMINI_WORKFLOW_PREFIX=gemini-   # Prefix for generated workflows
+                                 # Set to empty string to disable
 ```
 
 ## Usage Example
