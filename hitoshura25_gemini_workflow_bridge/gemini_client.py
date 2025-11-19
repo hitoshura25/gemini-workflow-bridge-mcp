@@ -91,16 +91,81 @@ class GeminiClient:
                 await process.wait()
                 raise RuntimeError("Gemini CLI request timed out after 5 minutes")
 
+            # Decode stderr once for reuse
+            stderr_text = stderr.decode('utf-8', errors='replace') if stderr else ""
+
             # Add debug logging
             logger.debug(f"Gemini CLI returncode: {process.returncode}")
             logger.debug(f"Gemini CLI stdout length: {len(stdout)}")
-            if stderr:
-                logger.debug(f"Gemini CLI stderr: {stderr.decode('utf-8', errors='replace')}")
+            if stderr_text:
+                logger.debug(f"Gemini CLI stderr: {stderr_text}")
+
+            # Log any warnings from stderr (even on success)
+            # Common warnings include Node.js top-level await warnings from dependencies
+            if stderr_text and process.returncode == 0:
+                # Check if stderr contains only warnings
+                has_warnings = any(line.strip().startswith('Warning:') for line in stderr_text.split('\n'))
+                if has_warnings:
+                    logger.warning(f"Gemini CLI produced warnings (but succeeded): {stderr_text}")
 
             # Check for errors
             if process.returncode != 0:
-                error_msg = stderr.decode('utf-8', errors='replace').strip()
-                raise RuntimeError(f"Gemini CLI error: {error_msg}")
+                # Filter out Node.js warnings (e.g., "Warning: Detected unsettled top-level await")
+                # These are common with yoga-layout and other dependencies but don't indicate failure
+                error_lines = []
+
+                # Patterns that indicate warning context (not actual errors)
+                warning_patterns = (
+                    'Warning:',       # Node.js warnings
+                    'file://',        # File path references in warnings
+                    'const ',         # JavaScript code snippets
+                    'let ',
+                    'var ',
+                    'function ',
+                    'import ',
+                    'export ',
+                    'async ',
+                    'await ',
+                )
+
+                # Patterns that indicate actual errors
+                error_indicators = (
+                    'Error:',
+                    'TypeError:',
+                    'SyntaxError:',
+                    'ReferenceError:',
+                    'RangeError:',
+                    'Failed',
+                    'Exception',
+                    'FATAL',
+                )
+
+                for line in stderr_text.split('\n'):
+                    stripped_line = line.strip()  # Cache stripped value
+
+                    if not stripped_line:  # Skip empty lines
+                        continue
+
+                    # Check if this is clearly an error (whitelist approach)
+                    is_error = any(stripped_line.startswith(pattern) for pattern in error_indicators)
+                    if is_error:
+                        error_lines.append(line)
+                        continue
+
+                    # Check if this is warning context (blacklist approach)
+                    is_warning_context = any(stripped_line.startswith(pattern) for pattern in warning_patterns)
+                    if not is_warning_context:
+                        # Not clearly a warning pattern, but also not clearly an error
+                        # Include it as a potential error (conservative approach)
+                        error_lines.append(line)
+
+                # If we have actual error content after filtering warnings, raise it
+                if error_lines:
+                    error_msg = '\n'.join(error_lines).strip()
+                    raise RuntimeError(f"Gemini CLI error: {error_msg}")
+                else:
+                    # Only warnings were present, log but don't fail
+                    logger.warning(f"Gemini CLI returned non-zero exit code but only warnings were present: {stderr_text}")
 
             # Parse JSON response
             try:
