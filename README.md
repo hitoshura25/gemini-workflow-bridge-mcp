@@ -220,7 +220,7 @@ GEMINI_MODEL=auto                # or specific model
 GEMINI_RETRY_MAX_ATTEMPTS=3      # Total attempts (1 initial + 2 retries)
 GEMINI_RETRY_INITIAL_DELAY=1.0   # Starting delay in seconds
 GEMINI_RETRY_MAX_DELAY=60.0      # Maximum delay in seconds
-GEMINI_RETRY_BASE=2.0            # Exponential backoff multiplier
+GEMINI_RETRY_BASE=2.0            # Exponential backoff multiplier (delay = initial * base^attempt)
 GEMINI_RETRY_ENABLED=true        # Enable/disable retry mechanism
 
 # Command/Workflow Prefixes (Namespace Management)
