@@ -70,13 +70,61 @@ class GeminiClient:
 
     @staticmethod
     def _load_retry_config() -> RetryConfig:
-        """Load retry configuration from environment variables"""
+        """Load retry configuration from environment variables with error handling"""
+        # Default values
+        defaults = {
+            "max_attempts": 3,
+            "initial_delay": 1.0,
+            "max_delay": 60.0,
+            "exponential_base": 2.0,
+            "enabled": True
+        }
+
+        # Parse max_attempts with error handling
+        try:
+            max_attempts = int(os.getenv("GEMINI_RETRY_MAX_ATTEMPTS", str(defaults["max_attempts"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_MAX_ATTEMPTS value, using default {defaults['max_attempts']}"
+            )
+            max_attempts = defaults["max_attempts"]
+
+        # Parse initial_delay with error handling
+        try:
+            initial_delay = float(os.getenv("GEMINI_RETRY_INITIAL_DELAY", str(defaults["initial_delay"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_INITIAL_DELAY value, using default {defaults['initial_delay']}"
+            )
+            initial_delay = defaults["initial_delay"]
+
+        # Parse max_delay with error handling
+        try:
+            max_delay = float(os.getenv("GEMINI_RETRY_MAX_DELAY", str(defaults["max_delay"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_MAX_DELAY value, using default {defaults['max_delay']}"
+            )
+            max_delay = defaults["max_delay"]
+
+        # Parse exponential_base with error handling
+        try:
+            exponential_base = float(os.getenv("GEMINI_RETRY_BASE", str(defaults["exponential_base"])))
+        except ValueError:
+            logger.warning(
+                f"Invalid GEMINI_RETRY_BASE value, using default {defaults['exponential_base']}"
+            )
+            exponential_base = defaults["exponential_base"]
+
+        # Parse enabled (boolean doesn't need try-except)
+        enabled = os.getenv("GEMINI_RETRY_ENABLED", "true").lower() == "true"
+
         return RetryConfig(
-            max_attempts=int(os.getenv("GEMINI_RETRY_MAX_ATTEMPTS", "3")),
-            initial_delay=float(os.getenv("GEMINI_RETRY_INITIAL_DELAY", "1.0")),
-            max_delay=float(os.getenv("GEMINI_RETRY_MAX_DELAY", "60.0")),
-            exponential_base=float(os.getenv("GEMINI_RETRY_BASE", "2.0")),
-            enabled=os.getenv("GEMINI_RETRY_ENABLED", "true").lower() == "true"
+            max_attempts=max_attempts,
+            initial_delay=initial_delay,
+            max_delay=max_delay,
+            exponential_base=exponential_base,
+            enabled=enabled
         )
 
     async def generate_content(
@@ -110,20 +158,21 @@ class GeminiClient:
 
         except NonRetryableError as e:
             # Non-retryable error (auth, invalid request, etc.)
+            retry_count = e.retry_count
             error_type = "non_retryable"
             logger.error(f"Non-retryable error in Gemini CLI: {e}")
             raise RuntimeError(str(e)) from e
 
         except RetryableError as e:
             # Max retries exceeded - all attempts failed
-            # retry_count = max_attempts - 1 (since first attempt is not a retry)
-            retry_count = self.retry_config.max_attempts - 1
+            retry_count = e.retry_count
             error_type = "max_retries_exceeded"
             logger.error(f"Max retries exceeded for Gemini CLI: {e}")
             raise RuntimeError(str(e)) from e
 
         except Exception as e:
-            # Unexpected error
+            # Unexpected error (shouldn't happen, but handle gracefully)
+            # retry_count remains 0 from initialization since we can't determine actual retries
             error_type = "unexpected"
             logger.error(f"Unexpected error in Gemini CLI: {e}")
             raise

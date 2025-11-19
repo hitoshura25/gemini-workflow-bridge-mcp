@@ -17,15 +17,9 @@ from .generator import (
 )
 
 __all__ = [
-
     'analyze_codebase_with_gemini',
-
     'create_specification_with_gemini',
-
     'review_code_with_gemini',
-
     'generate_documentation_with_gemini',
-
     'ask_gemini',
-
 ]

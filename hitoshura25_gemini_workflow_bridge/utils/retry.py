@@ -121,7 +121,7 @@ class RetryStatistics:
     total_retries: int = 0
     total_successes: int = 0
     total_failures: int = 0
-    by_error_type: dict = field(default_factory=dict)  # Dict[str, int] - count by error pattern
+    by_error_type: dict[str, int] = field(default_factory=dict)  # count by error pattern
 
     @property
     def success_rate(self) -> float:
@@ -163,13 +163,25 @@ class RetryStatistics:
 
 
 class RetryableError(Exception):
-    """Exception that can be retried"""
-    pass
+    """Exception that can be retried (max retries exceeded)
+
+    Attributes:
+        retry_count: Number of retries that were attempted before failure
+    """
+    def __init__(self, message: str, retry_count: int = 0):
+        super().__init__(message)
+        self.retry_count = retry_count
 
 
 class NonRetryableError(Exception):
-    """Exception that should not be retried"""
-    pass
+    """Exception that should not be retried
+
+    Attributes:
+        retry_count: Number of retries attempted before non-retryable error (usually 0)
+    """
+    def __init__(self, message: str, retry_count: int = 0):
+        super().__init__(message)
+        self.retry_count = retry_count
 
 
 async def retry_async(
@@ -238,7 +250,10 @@ async def retry_async(
                 logger.warning(
                     f"{operation_name}: Non-retryable error on attempt {attempt + 1}: {error_message}"
                 )
-                raise NonRetryableError(f"Non-retryable error: {error_message}") from e
+                raise NonRetryableError(
+                    f"Non-retryable error: {error_message}",
+                    retry_count=retry_count
+                ) from e
 
             if is_last_attempt:
                 logger.error(
@@ -247,7 +262,8 @@ async def retry_async(
                 )
                 raise RetryableError(
                     f"Operation failed after {config.max_attempts} attempts. "
-                    f"Last error: {error_message}"
+                    f"Last error: {error_message}",
+                    retry_count=retry_count
                 ) from e
 
             # Calculate delay and retry
@@ -263,5 +279,6 @@ async def retry_async(
 
     # Should never reach here, but just in case
     raise RetryableError(
-        f"Operation failed after {config.max_attempts} attempts"
+        f"Operation failed after {config.max_attempts} attempts",
+        retry_count=retry_count
     ) from last_exception

@@ -495,6 +495,13 @@ async def discover_tools(
         # Get all tool names only
         discover_tools(detail_level="name_only")
     """
+    # Validate that only one filter is provided
+    if query and category:
+        return json.dumps({
+            "error": "Cannot specify both 'query' and 'category' filters simultaneously",
+            "suggestion": "Use either 'query' for keyword search OR 'category' for filtering, but not both"
+        })
+
     results = []
 
     # Search by query

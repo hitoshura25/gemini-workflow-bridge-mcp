@@ -16,7 +16,7 @@ class CodebaseLoader:
         """Load .gitignore patterns"""
         gitignore_path = self.root_dir / ".gitignore"
         if gitignore_path.exists():
-            with open(gitignore_path) as f:
+            with open(gitignore_path, mode='r', encoding='utf-8') as f:
                 patterns = f.read().splitlines()
             return pathspec.PathSpec.from_lines('gitwildmatch', patterns)
         return None
@@ -46,7 +46,7 @@ class CodebaseLoader:
                         continue
 
                     try:
-                        with open(file_path, encoding='utf-8') as f:
+                        with open(file_path, mode='r', encoding='utf-8') as f:
                             relative_path = file_path.relative_to(self.root_dir)
                             files_content[str(relative_path)] = f.read()
                     except (UnicodeDecodeError, PermissionError):

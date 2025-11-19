@@ -1,7 +1,7 @@
 """Central registry for all MCP tools with metadata for progressive disclosure"""
 
 from enum import Enum
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 
 class ToolCategory(Enum):
@@ -20,7 +20,7 @@ class ToolMetadata(TypedDict):
     short_description: str  # One-line summary (for search results)
     keywords: list[str]     # Searchable keywords
     use_cases: list[str]    # Common use cases (for search)
-    complexity: str         # "simple", "moderate", "complex"
+    complexity: Literal["simple", "moderate", "complex"]
     requires_codebase: bool # Whether tool needs codebase context
 
 

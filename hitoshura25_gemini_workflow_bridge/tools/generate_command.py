@@ -40,6 +40,15 @@ async def generate_slash_command(
 
     # Apply prefix to command name
     prefixed_command_name = f"{cmd_prefix}{command_name}"
+
+    # Validate steps parameter
+    if steps and workflow_type != "custom":
+        raise ValueError(
+            f"The 'steps' parameter is only supported for workflow_type='custom'. "
+            f"Got workflow_type='{workflow_type}' with steps provided. "
+            f"Either use workflow_type='custom' or omit the 'steps' parameter."
+        )
+
     # Define command templates
     command_templates = {
             "feature": """# /{command_name} - Complete Feature Implementation Workflow

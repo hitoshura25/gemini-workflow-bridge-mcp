@@ -153,7 +153,12 @@ class TestSetupWorkflowsWithPrefix:
 
         # Check that command content uses prefixed name
         assert "/test-spec-only" in content
-        assert "/spec-only" not in content or "/test-spec-only" in content
+        # Ensure /spec-only doesn't appear standalone (only as part of /test-spec-only)
+        # Check for /spec-only with word boundaries (space, newline, etc.)
+        import re
+        standalone_unprefixed = re.search(r'(?<![a-z-])/spec-only(?![a-z-])', content)
+        assert standalone_unprefixed is None, \
+            "Found standalone '/spec-only' in content, prefix substitution incomplete"
 
     @pytest.mark.asyncio
     async def test_multiple_workflows_with_prefix(self, tmp_path):
