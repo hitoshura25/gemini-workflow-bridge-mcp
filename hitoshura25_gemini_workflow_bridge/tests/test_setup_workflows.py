@@ -14,7 +14,12 @@ async def test_setup_workflows_default():
     """Test setup_workflows with default parameters (spec-only)."""
     temp_dir = tempfile.mkdtemp()
     try:
-        result = await setup_workflows(output_dir=temp_dir)
+        # Disable prefix for backward compatibility with existing tests
+        result = await setup_workflows(
+            output_dir=temp_dir,
+            command_prefix="",
+            workflow_prefix=""
+        )
 
         assert result["success"] is True
         assert len(result["workflows_created"]) == 1
@@ -38,7 +43,13 @@ async def test_setup_workflows_all():
     """Test setup_workflows with 'all' workflows."""
     temp_dir = tempfile.mkdtemp()
     try:
-        result = await setup_workflows(workflows=["all"], output_dir=temp_dir)
+        # Disable prefix for backward compatibility with existing tests
+        result = await setup_workflows(
+            workflows=["all"],
+            output_dir=temp_dir,
+            command_prefix="",
+            workflow_prefix=""
+        )
 
         assert result["success"] is True
         assert len(result["workflows_created"]) == 4
@@ -65,10 +76,13 @@ async def test_setup_workflows_without_commands():
     """Test setup_workflows without creating command files."""
     temp_dir = tempfile.mkdtemp()
     try:
+        # Disable prefix for backward compatibility with existing tests
         result = await setup_workflows(
             workflows=["spec-only"],
             output_dir=temp_dir,
-            include_commands=False
+            include_commands=False,
+            command_prefix="",
+            workflow_prefix=""
         )
 
         assert result["success"] is True
@@ -139,9 +153,12 @@ async def test_setup_workflows_resolves_paths():
     try:
         # Use a path with .. that resolves to temp_dir
         relative_path = str(Path(temp_dir) / "subdir" / "..")
+        # Disable prefix for backward compatibility with existing tests
         result = await setup_workflows(
             workflows=["spec-only"],
-            output_dir=relative_path
+            output_dir=relative_path,
+            command_prefix="",
+            workflow_prefix=""
         )
 
         # Should succeed - path is resolved to temp_dir
@@ -179,9 +196,12 @@ async def test_workflow_content_validity():
     """Test that generated workflow files contain expected content."""
     temp_dir = tempfile.mkdtemp()
     try:
+        # Disable prefix for backward compatibility with existing tests
         await setup_workflows(
             workflows=["spec-only"],
-            output_dir=temp_dir
+            output_dir=temp_dir,
+            command_prefix="",
+            workflow_prefix=""
         )
 
         workflow_file = Path(temp_dir) / ".claude" / "workflows" / "spec-only.md"
@@ -302,9 +322,12 @@ async def test_environment_variable_support():
         os.environ["DEFAULT_WORKFLOW_DIR"] = "custom/workflows"
         os.environ["DEFAULT_COMMAND_DIR"] = "custom/commands"
 
+        # Disable prefix for backward compatibility with existing tests
         result = await setup_workflows(
             workflows=["spec-only"],
-            output_dir=temp_dir
+            output_dir=temp_dir,
+            command_prefix="",
+            workflow_prefix=""
         )
 
         # Verify files were created in custom directories
