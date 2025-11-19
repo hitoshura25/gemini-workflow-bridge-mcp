@@ -113,14 +113,51 @@ class GeminiClient:
                 # Filter out Node.js warnings (e.g., "Warning: Detected unsettled top-level await")
                 # These are common with yoga-layout and other dependencies but don't indicate failure
                 error_lines = []
+
+                # Patterns that indicate warning context (not actual errors)
+                warning_patterns = (
+                    'Warning:',       # Node.js warnings
+                    'file://',        # File path references in warnings
+                    'const ',         # JavaScript code snippets
+                    'let ',
+                    'var ',
+                    'function ',
+                    'import ',
+                    'export ',
+                    'async ',
+                    'await ',
+                )
+
+                # Patterns that indicate actual errors
+                error_indicators = (
+                    'Error:',
+                    'TypeError:',
+                    'SyntaxError:',
+                    'ReferenceError:',
+                    'RangeError:',
+                    'Failed',
+                    'Exception',
+                    'FATAL',
+                )
+
                 for line in stderr_text.split('\n'):
-                    # Skip warning lines and empty lines
-                    if line.strip() and not line.strip().startswith('Warning:'):
-                        # Also skip file paths that are part of warning context
-                        if not line.strip().startswith('file://'):
-                            # Skip lines that look like code snippets from warnings
-                            if not line.strip().startswith('const '):
-                                error_lines.append(line)
+                    stripped_line = line.strip()  # Cache stripped value
+
+                    if not stripped_line:  # Skip empty lines
+                        continue
+
+                    # Check if this is clearly an error (whitelist approach)
+                    is_error = any(stripped_line.startswith(pattern) for pattern in error_indicators)
+                    if is_error:
+                        error_lines.append(line)
+                        continue
+
+                    # Check if this is warning context (blacklist approach)
+                    is_warning_context = any(stripped_line.startswith(pattern) for pattern in warning_patterns)
+                    if not is_warning_context:
+                        # Not clearly a warning pattern, but also not clearly an error
+                        # Include it as a potential error (conservative approach)
+                        error_lines.append(line)
 
                 # If we have actual error content after filtering warnings, raise it
                 if error_lines:

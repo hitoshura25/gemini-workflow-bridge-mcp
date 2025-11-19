@@ -163,8 +163,34 @@ async def test_generate_content_warnings_only_on_failure():
     )
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-        # Should not raise error since stderr contains only warnings
-        # Instead, it should log a warning and continue processing the (empty) response
+        # Warnings should be ignored (not cause "Gemini CLI error" exception)
+        # However, the empty response will still cause an error
         with pytest.raises(RuntimeError, match="empty response"):
-            # Will fail on empty response, not on warnings
+            # Expected: RuntimeError about empty response, NOT about warnings
+            await client.generate_content("test prompt")
+
+
+@pytest.mark.asyncio
+async def test_generate_content_real_errors_are_caught():
+    """Test that actual errors in stderr are properly raised even with warnings present."""
+    with patch('shutil.which', return_value='/usr/bin/gemini'):
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr='')
+            client = GeminiClient(model="auto")
+
+    mock_process = MagicMock()
+    mock_process.returncode = 1  # Non-zero exit code
+    # Mix of warnings and actual errors
+    mixed_stderr = b"""Warning: Detected unsettled top-level await at
+     file:///path/to/module.js:13
+     const Foo = await loadFoo();
+Error: Authentication failed
+TypeError: Cannot read property 'data' of undefined"""
+    mock_process.communicate = AsyncMock(
+        return_value=(b"", mixed_stderr)
+    )
+
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process):
+        # Should raise error with the actual error messages, filtering out warnings
+        with pytest.raises(RuntimeError, match="Error: Authentication failed"):
             await client.generate_content("test prompt")
