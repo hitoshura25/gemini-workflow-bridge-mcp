@@ -7,6 +7,7 @@ from typing import Any, Dict, Literal, Optional
 
 from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
+from ..utils.json_parser import parse_json_response
 
 
 async def generate_feature_workflow(
@@ -95,9 +96,9 @@ Task:
         temperature=0.7
     )
 
-    # Parse response
+    # Parse response (handles markdown-wrapped JSON)
     try:
-        result = json.loads(response)
+        result = parse_json_response(response)
     except json.JSONDecodeError as e:
         # If Gemini returns non-JSON response, fail fast
         raise ValueError(f"Failed to parse Gemini response as JSON: {str(e)}. Response: {response[:200]}") from e

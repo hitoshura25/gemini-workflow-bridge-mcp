@@ -8,6 +8,7 @@ from ..gemini_client import GeminiClient
 from ..codebase_loader import CodebaseLoader
 from ..utils.token_counter import count_tokens, format_token_stats
 from ..utils.prompt_loader import load_system_prompt, build_prompt_with_context
+from ..utils.json_parser import parse_json_response
 
 
 async def query_codebase(
@@ -113,9 +114,9 @@ Provide your response as a JSON array with this structure:
         temperature=0.3  # Low temperature for factual extraction
     )
 
-    # Parse response
+    # Parse response (handles markdown-wrapped JSON)
     try:
-        answers = json.loads(response)
+        answers = parse_json_response(response)
         if not isinstance(answers, list):
             # If response is a dict with "answers" key, extract it
             if isinstance(answers, dict) and "answers" in answers:
